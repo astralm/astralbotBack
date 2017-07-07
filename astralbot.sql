@@ -1,13 +1,15 @@
 -- phpMyAdmin SQL Dump
--- version 4.5.1
--- http://www.phpmyadmin.net
+-- version 4.7.0
+-- https://www.phpmyadmin.net/
 --
--- Хост: 127.0.0.1
--- Время создания: Июн 23 2017 г., 20:41
--- Версия сервера: 10.1.13-MariaDB
--- Версия PHP: 5.6.23
+-- Хост: localhost
+-- Время создания: Июл 07 2017 г., 10:29
+-- Версия сервера: 10.1.21-MariaDB
+-- Версия PHP: 5.6.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
 SET time_zone = "+00:00";
 
 
@@ -17,7 +19,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- База данных: `astralbot_2`
+-- База данных: `astralbot`
 --
 
 -- --------------------------------------------------------
@@ -72,6 +74,7 @@ CREATE TABLE `sessions_status` (
 
 --
 -- Дублирующая структура для представления `sessions_status_view`
+-- (See below for the actual view)
 --
 CREATE TABLE `sessions_status_view` (
 `session_id` int(11)
@@ -97,6 +100,7 @@ CREATE TABLE `session_bot_messages` (
 
 --
 -- Дублирующая структура для представления `session_bot_message_view`
+-- (See below for the actual view)
 --
 CREATE TABLE `session_bot_message_view` (
 `session_id` int(11)
@@ -123,6 +127,7 @@ CREATE TABLE `session_human_messages` (
 
 --
 -- Дублирующая структура для представления `session_human_messages_view`
+-- (See below for the actual view)
 --
 CREATE TABLE `session_human_messages_view` (
 `session_id` int(11)
@@ -160,41 +165,55 @@ CREATE TABLE `users` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `users_sessions`
+-- Структура таблицы `user_sessions`
 --
 
-CREATE TABLE `users_sessions` (
+CREATE TABLE `user_sessions` (
   `user_session_id` int(11) NOT NULL,
-  `user_session_hash` varchar(32) COLLATE utf8_bin NOT NULL,
-  `user_session_date_create` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `session_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `user_sessions_statuses`
+-- Дублирующая структура для представления `user_sessions_view`
+-- (See below for the actual view)
 --
-
-CREATE TABLE `user_sessions_statuses` (
-  `user_session_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `users_sessions_id` int(11) NOT NULL,
-  `status_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
-
--- --------------------------------------------------------
-
---
--- Дублирующая структура для представления `user_sessions_statuses_view`
---
-CREATE TABLE `user_sessions_statuses_view` (
+CREATE TABLE `user_sessions_view` (
 `user_id` int(11)
 ,`user_email` varchar(32)
 ,`user_password` varchar(32)
 ,`user_name` varchar(32)
-,`user_session_id` int(11)
-,`user_session_hash` varchar(32)
-,`user_session_date_create` timestamp
+,`session_id` int(11)
+,`session_hash` varchar(32)
+,`session_date_create` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `user_status`
+--
+
+CREATE TABLE `user_status` (
+  `user_status_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `status_id` int(11) NOT NULL,
+  `user_status_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+-- --------------------------------------------------------
+
+--
+-- Дублирующая структура для представления `user_status_view`
+-- (See below for the actual view)
+--
+CREATE TABLE `user_status_view` (
+`user_id` int(11)
+,`user_email` varchar(32)
+,`user_password` varchar(32)
+,`user_name` varchar(32)
 ,`status_id` int(11)
 ,`status_name` varchar(32)
 );
@@ -229,11 +248,20 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 -- --------------------------------------------------------
 
 --
--- Структура для представления `user_sessions_statuses_view`
+-- Структура для представления `user_sessions_view`
 --
-DROP TABLE IF EXISTS `user_sessions_statuses_view`;
+DROP TABLE IF EXISTS `user_sessions_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `user_sessions_statuses_view`  AS  select `u`.`user_id` AS `user_id`,`u`.`user_email` AS `user_email`,`u`.`user_password` AS `user_password`,`u`.`user_name` AS `user_name`,`us`.`user_session_id` AS `user_session_id`,`us`.`user_session_hash` AS `user_session_hash`,`us`.`user_session_date_create` AS `user_session_date_create`,`s`.`status_id` AS `status_id`,`s`.`status_name` AS `status_name` from (((`user_sessions_statuses` `uss` join `users` `u` on((`u`.`user_id` = `uss`.`user_id`))) join `users_sessions` `us` on((`us`.`user_session_id` = `uss`.`user_session_id`))) join `statuses` `s` on((`s`.`status_id` = `uss`.`status_id`))) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `user_sessions_view`  AS  select `u`.`user_id` AS `user_id`,`u`.`user_email` AS `user_email`,`u`.`user_password` AS `user_password`,`u`.`user_name` AS `user_name`,`s`.`session_id` AS `session_id`,`s`.`session_hash` AS `session_hash`,`s`.`session_date_create` AS `session_date_create` from ((`user_sessions` `us` join `users` `u` on((`u`.`user_id` = `us`.`user_id`))) join `sessions` `s` on((`s`.`session_id` = `us`.`session_id`))) ;
+
+-- --------------------------------------------------------
+
+--
+-- Структура для представления `user_status_view`
+--
+DROP TABLE IF EXISTS `user_status_view`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `user_status_view`  AS  select `u`.`user_id` AS `user_id`,`u`.`user_email` AS `user_email`,`u`.`user_password` AS `user_password`,`u`.`user_name` AS `user_name`,`s`.`status_id` AS `status_id`,`s`.`status_name` AS `status_name` from ((`user_status` `us` join `users` `u` on((`u`.`user_id` = `us`.`user_id`))) join `statuses` `s` on((`s`.`status_id` = `us`.`status_id`))) ;
 
 --
 -- Индексы сохранённых таблиц
@@ -294,19 +322,22 @@ ALTER TABLE `users`
   ADD PRIMARY KEY (`user_id`);
 
 --
--- Индексы таблицы `users_sessions`
+-- Индексы таблицы `user_sessions`
 --
-ALTER TABLE `users_sessions`
-  ADD PRIMARY KEY (`user_session_id`);
+ALTER TABLE `user_sessions`
+  ADD PRIMARY KEY (`user_session_id`),
+  ADD UNIQUE KEY `user_session_hash` (`session_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `session_id` (`session_id`),
+  ADD KEY `session_id_2` (`session_id`);
 
 --
--- Индексы таблицы `user_sessions_statuses`
+-- Индексы таблицы `user_status`
 --
-ALTER TABLE `user_sessions_statuses`
-  ADD PRIMARY KEY (`user_session_id`),
-  ADD KEY `status_id` (`status_id`),
-  ADD KEY `users_sessions_id` (`users_sessions_id`),
-  ADD KEY `user_id` (`user_id`);
+ALTER TABLE `user_status`
+  ADD PRIMARY KEY (`user_status_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `status_id` (`status_id`);
 
 --
 -- AUTO_INCREMENT для сохранённых таблиц
@@ -326,7 +357,7 @@ ALTER TABLE `human_messages`
 -- AUTO_INCREMENT для таблицы `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=141;
 --
 -- AUTO_INCREMENT для таблицы `sessions_status`
 --
@@ -346,22 +377,22 @@ ALTER TABLE `session_human_messages`
 -- AUTO_INCREMENT для таблицы `statuses`
 --
 ALTER TABLE `statuses`
-  MODIFY `status_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `status_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 --
 -- AUTO_INCREMENT для таблицы `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 --
--- AUTO_INCREMENT для таблицы `users_sessions`
+-- AUTO_INCREMENT для таблицы `user_sessions`
 --
-ALTER TABLE `users_sessions`
-  MODIFY `user_session_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `user_sessions`
+  MODIFY `user_session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
 --
--- AUTO_INCREMENT для таблицы `user_sessions_statuses`
+-- AUTO_INCREMENT для таблицы `user_status`
 --
-ALTER TABLE `user_sessions_statuses`
-  MODIFY `user_session_id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `user_status`
+  MODIFY `user_status_id` int(11) NOT NULL AUTO_INCREMENT;
 --
 -- Ограничения внешнего ключа сохраненных таблиц
 --
@@ -388,12 +419,19 @@ ALTER TABLE `session_human_messages`
   ADD CONSTRAINT `session_human_messages_ibfk_2` FOREIGN KEY (`human_message_id`) REFERENCES `human_messages` (`human_message_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Ограничения внешнего ключа таблицы `user_sessions_statuses`
+-- Ограничения внешнего ключа таблицы `user_sessions`
 --
-ALTER TABLE `user_sessions_statuses`
-  ADD CONSTRAINT `user_sessions_statuses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `user_sessions_statuses_ibfk_2` FOREIGN KEY (`users_sessions_id`) REFERENCES `users_sessions` (`user_session_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `user_sessions_statuses_ibfk_3` FOREIGN KEY (`status_id`) REFERENCES `statuses` (`status_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `user_sessions`
+  ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `user_sessions_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`session_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Ограничения внешнего ключа таблицы `user_status`
+--
+ALTER TABLE `user_status`
+  ADD CONSTRAINT `user_status_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `user_status_ibfk_2` FOREIGN KEY (`status_id`) REFERENCES `statuses` (`status_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
