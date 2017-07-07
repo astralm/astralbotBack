@@ -1,3 +1,6 @@
 module.exports = {
-	
+	LOGIN: "LOGIN",
+	GET_HASH: "GET_HASH",
+	SET_HASH: "SET_HASH",
+	SET_STATUS: "SET_STATUS"
 }
