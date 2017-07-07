@@ -5,7 +5,7 @@ module.exports = function(io, reducer, actions){
 		Object.keys(Types).forEach(function(key){
 			socket.on(key, function(data){
 				reducer(actions[key](data), function(err, responce){
-					socket.emit(key, err || responce);
+					socket.emit(key == Types.GET_HASH ? Types.SET_HASH : key, err || responce);
 				});
 			});
 		});
