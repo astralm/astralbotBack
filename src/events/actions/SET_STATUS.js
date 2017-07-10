@@ -1,12 +1,18 @@
+var status;
 module.exports = function(data, callback){
+	status = data.status_id;
 	this.mysql.query({
-		sql: 'INSERT INTO `user_status` (user_id, status_id) SELECT usv.user_id, s.status_id FROM `user_sessions_view` AS usv LEFT JOIN `statuses` AS s ON s.status_name = ? WHERE usv.session_hash = ?',
-		timeout: 1000,
+		sql: 'INSERT INTO `user_statuses` (`user_id`, `status_id`) SELECT user_id, ? FROM `user_sessions_status_view` WHERE session_hash = ?',
+		tiomeout: 1000,
 		values: [
-			data.status,
+			data.status_id,
 			data.hash
 		]
-	}, (err, data) => {
-		err ? callback("offline") : data.affectedRows > 0 ? callback(data.status) : callback("offline");
-	});
+	}, function(err, data){
+		err ?
+			callback() :
+			data.affectedRows > 0 ?
+				callback(status) :
+				callback()
+	})
 }
