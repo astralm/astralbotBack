@@ -5,7 +5,14 @@ module.exports = function(io, reducer, actions){
 		reducer(actions[Types.HASH](), function(data){
 			if(data != null){
 				socket.emit(Types.HASH, data);
+				socket.hash = data;
 			}
+		});
+		socket.on('disconnect', function(){
+			reducer(actions[Types.SET_STATUS]({
+				status_id: 2,
+				hash: socket.hash
+			}), function(){});
 		});
 		Object.keys(Types).forEach(function(key){
 			socket.on(key, function(data){
