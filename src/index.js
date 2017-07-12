@@ -1,7 +1,7 @@
 var env = require('./constants/env.js'),
 		reducer = require('./reducer.js')(require('mysql').createConnection(env.mysql)),
 		Events = require('./creators/index.js'),
-		rest = require('express')();
+		rest = require('express')().use(require('body-parser').json());
 require("./ws/index.js")(
 	require('socket.io')(require('http').createServer().listen(env.ws.port)), 
 	reducer, 
