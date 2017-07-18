@@ -8,7 +8,6 @@ module.exports = function(data, callback){
 			data.password
 		]
 	}, function(err, data){
-		console.log(err, data);
 		callback(err ? null : !data.affectedRows || data.affectedRows <= 0 ? null : true);
 	})
 }
