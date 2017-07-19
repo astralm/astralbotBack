@@ -15,5 +15,10 @@ module.exports = function(io, reducer, actions){
 				socket.emit(Types.LOGOUT, response);
 			})
 		});
+		socket.on(Types.GET_USERS, function(){
+			reducer(actions.GET_USERS(), function(response){
+				socket.emit(Types.GET_USERS, response);
+			})
+		});
 	});
 }
