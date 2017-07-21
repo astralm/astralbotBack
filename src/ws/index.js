@@ -12,7 +12,10 @@ module.exports = function(io, reducer, actions){
 			socket.email = data.email;
 			reducer(actions.LOGIN(data), function(response){
 				socket.emit(Types.LOGIN, response);
-			})
+			});
+			reducer(actions.UPDATE_USER(socket.email), function(response){
+				socket.emit(Types.UPDATE_USER, response);
+			});
 			broadcastGetUsers();
 		});
 		socket.on('disconnect', function(){
@@ -28,6 +31,11 @@ module.exports = function(io, reducer, actions){
 		socket.on(Types.GET_USERS, function(){
 			reducer(actions.GET_USERS(), function(response){
 				socket.emit(Types.GET_USERS, response);
+			})
+		});
+		socket.on(Types.SET_USER, function(data){
+			reducer(actions.SET_USER(data), function(){
+				broadcastGetUsers();
 			})
 		});
 	});
