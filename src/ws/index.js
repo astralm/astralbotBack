@@ -38,5 +38,10 @@ module.exports = function(io, reducer, actions){
 				broadcastGetUsers();
 			})
 		});
+		socket.on(Types.GET_SESSIONS, function(data){
+			reducer(actions.GET_SESSIONS(data), function(response){
+				socket.emit(Types.GET_SESSIONS, response);
+			})
+		});
 	});
 }
