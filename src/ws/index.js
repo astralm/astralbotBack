@@ -16,7 +16,6 @@ module.exports = function(io, reducer, actions){
 			reducer(actions.UPDATE_USER(socket.email), function(response){
 				socket.emit(Types.UPDATE_USER, response);
 			});
-			broadcastGetUsers();
 		});
 		socket.on('disconnect', function(){
 			reducer(actions.LOGOUT({email: socket.email}));
@@ -42,6 +41,48 @@ module.exports = function(io, reducer, actions){
 			reducer(actions.GET_SESSIONS(data), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
 			})
+		});
+		socket.on(Types.GET_USER_SESSIONS, function(data){
+			reducer(actions.GET_USER_SESSIONS(data), function(response){
+				socket.emit(Types.GET_USER_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data.offset);
+		});
+		socket.on(Types.GET_FREE_SESSIONS, function(data){
+			reducer(actions.GET_FREE_SESSIONS(data), function(response){
+				socket.emit(Types.GET_FREE_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
+		});
+		socket.on(Types.GET_BUSY_SESSIONS, function(data){
+			reducer(actions.GET_BUSY_SESSIONS(data), function(response){
+				socket.emit(Types.GET_BUSY_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
+		});
+		socket.on(Types.GET_ERROR_SESSIONS, function(data){
+			reducer(actions.GET_ERROR_SESSIONS(data), function(response){
+				socket.emit(Types.GET_ERROR_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
+		});
+		socket.on(Types.GET_SUCCESS_SESSIONS, function(data){
+			reducer(actions.GET_SUCCESS_SESSIONS(data), function(response){
+				socket.emit(Types.GET_SUCCESS_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
+		});
+		socket.on(Types.GET_ACTIVE_SESSIONS, function(data){
+			reducer(actions.GET_ACTIVE_SESSIONS(data), function(response){
+				socket.emit(Types.GET_ACTIVE_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
+		});
+		socket.on(Types.GET_INACTIVE_SESSIONS, function(data){
+			reducer(actions.GET_INACTIVE_SESSIONS(data), function(response){
+				socket.emit(Types.GET_INACTIVE_SESSIONS, response);
+			});
+			socket.emit(Types.SET_OFFSET, data);
 		});
 	});
 }
