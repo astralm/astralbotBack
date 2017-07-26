@@ -3,7 +3,7 @@ module.exports = function(data, callback){
 		sql: 'SELECT * FROM `sessions_info_view` WHERE `session_status` = 1 LIMIT 50 OFFSET ?',
 		timeout: 1000,
 		values: [
-			data
+			+data
 		]
 	}, function(err, data){
 		err ? 
