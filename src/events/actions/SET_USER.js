@@ -8,6 +8,6 @@ module.exports = function(data, callback){
 			data.name
 		]
 	}, function(err, data){
-		console.log(err, data);
+		
 	});
 }
