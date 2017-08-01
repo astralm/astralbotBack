@@ -40,34 +40,32 @@ function broadcastGetSessions(){
 		});
 	});
 }
-function broadcastGetSessionInfoAndDialog(){
-	var _this = this,
-		switches = (function(sockets){
-			var res = [];
-			for(var socketKey in sockets){
-				var socket = sockets[socketKey];
-				if(socket.switch && (socket.switch == Types.GET_SESSION_INFO || socket.switch == Types.GET_SESSION_DIALOG))
-					if (res.indexOf(+socket.attributes.session_id) == -1)
-						res.push(socket.attributes.session_id);
-			}
-			return res;
-		})(_this.io.sockets.sockets);
-		switches.forEach(function(action){
-			_this.reducer(_this.actions[Types.GET_SESSION_INFO](action), function(response){
-				for(var socketKey in _this.io.sockets.sockets){
-					var socket = _this.io.sockets.sockets[socketKey];
-					if ((socket.switch == Types.GET_SESSION_DIALOG || socket.switch == Types.GET_SESSION_INFO) && socket.attributes.session_id && socket.attributes.session_id == action){
-						socket.emit(Types.GET_SESSION_INFO, response);
-					}
-				}
-			});
-		});
+function broadcastGetSessionInfo(session_id){
+	var _this = this;
+	this.reducer(this.actions.GET_SESSION_INFO(session_id), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if((socket.switch == Types.GET_SESSION_INFO || socket.switch == Types.GET_SESSION_DIALOG) && socket.attributes.session_id == session_id)
+				socket.emit(Types.GET_SESSION_INFO, response);
+		}
+	});
+}
+function broadcastGetSessionsDialog(session_id){
+	var _this = this;
+	this.reducer(this.actions.GET_SESSION_INFO(session_id), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if((socket.switch == Types.GET_SESSION_INFO || socket.switch == Types.GET_SESSION_DIALOG) && socket.attributes.session_id == session_id)
+				socket.emit(Types.GET_SESSION_DIALOG, response);
+		}
+	});
 }
 module.exports = function(io, reducer, actions){
 	io.on('connection', function(socket){
 		broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 		broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
-		broadcastGetSessionInfoAndDialog = broadcastGetSessionInfoAndDialog.bind({reducer, actions, io});
+		broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
+		broadcastGetSessionsDialog = broadcastGetSessionsDialog.bind({reducer, actions, io});
 		socket.on(Types.LOGIN, function(data){
 			socket.email = data.email;
 			socket.switch = "";
@@ -176,16 +174,15 @@ module.exports = function(io, reducer, actions){
 			});
 		});
 		socket.on(Types.BIND_SESSION, function(data){
-			console.log(socket.switch, socket.attributes.session_id);
 			reducer(actions.BIND_SESSION(data), function(response){
 				broadcastGetSessions();
-				broadcastGetSessionInfoAndDialog();
+				broadcastGetSessionInfo(data.session_id);
 			});
 		});
 		socket.on(Types.UNBIND_SESSION, function(data){
 			reducer(actions.UNBIND_SESSION(data), function(response){
 				broadcastGetSessions();
-				broadcastGetSessionInfoAndDialog();
+				broadcastGetSessionInfo(data.session_id);
 			});
 		});
 		socket.on(Types.GET_SESSION_INFO, function(data){
