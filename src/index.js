@@ -1,7 +1,16 @@
 var env = require('./constants/env.js'),
-		reducer = require('./reducer.js')(require('mysql').createConnection(env.mysql)),
-		Events = require('./creators/index.js'),
-		rest = require('express')().use(require('body-parser').json());
+	reducer = require('./reducer.js')(require('mysql').createConnection(env.mysql)),
+	Events = require('./creators/index.js'),
+	rest = require('express')().use(require('body-parser').json()),
+	telegram = new (require('node-telegram-bot-api'))(env.telegram.token, {polling: true}),
+	apiai = require('apiai')("d062a1a8167d4d3ebd34fa51e552c58d");
+telegram.connections = [];
+require("./telegram/index.js")(
+	telegram,
+	apiai,
+	reducer,
+	Events
+);
 require("./ws/index.js")(
 	require('socket.io')(require('http').createServer().listen(env.ws.port)), 
 	reducer, 
