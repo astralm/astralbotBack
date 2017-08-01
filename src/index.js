@@ -3,18 +3,20 @@ var env = require('./constants/env.js'),
 	Events = require('./creators/index.js'),
 	rest = require('express')().use(require('body-parser').json()),
 	telegram = new (require('node-telegram-bot-api'))(env.telegram.token, {polling: true}),
-	apiai = require('apiai')(env.apiai.token);
+	apiai = require('apiai')(env.apiai.token),
+	io = require('socket.io')(require('http').createServer().listen(env.ws.port));
 telegram.connections = [];
+require("./ws/index.js")(
+	io, 
+	reducer, 
+	Events
+);
 require("./telegram/index.js")(
 	telegram,
 	apiai,
 	reducer,
-	Events
-);
-require("./ws/index.js")(
-	require('socket.io')(require('http').createServer().listen(env.ws.port)), 
-	reducer, 
-	Events
+	Events,
+	io
 );
 require("./rest/index.js")(
 	rest,
