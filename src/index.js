@@ -3,7 +3,7 @@ var env = require('./constants/env.js'),
 	Events = require('./creators/index.js'),
 	rest = require('express')().use(require('body-parser').json()),
 	telegram = new (require('node-telegram-bot-api'))(env.telegram.token, {polling: true}),
-	apiai = require('apiai')("d062a1a8167d4d3ebd34fa51e552c58d");
+	apiai = require('apiai')(env.apiai.token);
 telegram.connections = [];
 require("./telegram/index.js")(
 	telegram,
