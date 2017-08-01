@@ -1,9 +1,9 @@
 module.exports = function(data, callback){
 	this.mysql.query({
-		sql: 'SELECT * FROM `session_dialog_view` WHERE `session_id` = ? ORDER BY `answer_id`',
+		sql: 'SELECT * FROM `session_dialog_view` WHERE `'+(data.session_id ? 'session_id' : 'session_hash')+'` = ? ORDER BY `answer_id`',
 		timeout: 1000,
 		values: [
-			+data
+			+data.session_id || +data.session_hash
 		]
 	}, function(err, data){
 		err ?

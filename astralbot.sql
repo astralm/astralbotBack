@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Июл 25 2017 г., 16:22
+-- Время создания: Авг 01 2017 г., 13:43
 -- Версия сервера: 10.1.21-MariaDB
 -- Версия PHP: 5.6.30
 
@@ -32,7 +32,8 @@ CREATE TABLE `answers` (
   `answer_id` int(11) NOT NULL,
   `answer_message` text CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   `answer_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `session_id` int(11) NOT NULL
+  `session_id` int(11) NOT NULL,
+  `question_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
@@ -57,9 +58,10 @@ CREATE TABLE `questions` (
 CREATE TABLE `sessions` (
   `session_id` int(11) NOT NULL,
   `session_hash` varchar(32) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
-  `session_status` tinyint(1) NOT NULL,
+  `session_status` tinyint(1) NOT NULL DEFAULT '1',
   `user_id` int(11) NOT NULL,
-  `session_error` tinyint(1) NOT NULL DEFAULT '0'
+  `session_error` tinyint(1) NOT NULL DEFAULT '0',
+  `bot_work` tinyint(1) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
@@ -72,6 +74,38 @@ CREATE TABLE `sessions_info_view` (
 `question` mediumtext
 ,`answer` mediumtext
 ,`session_id` int(11)
+,`session_hash` varchar(32)
+,`session_status` tinyint(1)
+,`user_id` int(11)
+,`session_error` tinyint(1)
+,`user_name` varchar(32)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Дублирующая структура для представления `session_dialog_view`
+-- (See below for the actual view)
+--
+CREATE TABLE `session_dialog_view` (
+`answer_id` int(11)
+,`answer_message` text
+,`answer_date` timestamp
+,`session_id` int(11)
+,`question_id` int(11)
+,`question_message` text
+,`question_date` timestamp
+,`session_hash` varchar(32)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Дублирующая структура для представления `session_info_view`
+-- (See below for the actual view)
+--
+CREATE TABLE `session_info_view` (
+`session_id` int(11)
 ,`session_hash` varchar(32)
 ,`session_status` tinyint(1)
 ,`user_id` int(11)
@@ -102,6 +136,24 @@ DROP TABLE IF EXISTS `sessions_info_view`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `sessions_info_view`  AS  select (select `questions`.`question_message` from `questions` where (`questions`.`session_id` = `s`.`session_id`) order by `questions`.`question_id` desc limit 1) AS `question`,(select `answers`.`answer_message` from `answers` where (`answers`.`session_id` = `s`.`session_id`) order by `answers`.`answer_id` desc limit 1) AS `answer`,`s`.`session_id` AS `session_id`,`s`.`session_hash` AS `session_hash`,`s`.`session_status` AS `session_status`,`s`.`user_id` AS `user_id`,`s`.`session_error` AS `session_error`,`u`.`user_name` AS `user_name` from (`sessions` `s` left join `users` `u` on((`u`.`user_id` = `s`.`user_id`))) ;
 
+-- --------------------------------------------------------
+
+--
+-- Структура для представления `session_dialog_view`
+--
+DROP TABLE IF EXISTS `session_dialog_view`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `session_dialog_view`  AS  select `a`.`answer_id` AS `answer_id`,`a`.`answer_message` AS `answer_message`,`a`.`answer_date` AS `answer_date`,`a`.`session_id` AS `session_id`,`a`.`question_id` AS `question_id`,`q`.`question_message` AS `question_message`,`q`.`question_date` AS `question_date`,`s`.`session_hash` AS `session_hash` from ((`answers` `a` left join `questions` `q` on((`q`.`question_id` = `a`.`question_id`))) join `sessions` `s` on((`s`.`session_id` = `a`.`session_id`))) ;
+
+-- --------------------------------------------------------
+
+--
+-- Структура для представления `session_info_view`
+--
+DROP TABLE IF EXISTS `session_info_view`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `session_info_view`  AS  select `s`.`session_id` AS `session_id`,`s`.`session_hash` AS `session_hash`,`s`.`session_status` AS `session_status`,`s`.`user_id` AS `user_id`,`s`.`session_error` AS `session_error`,`u`.`user_name` AS `user_name` from (`sessions` `s` left join `users` `u` on((`u`.`user_id` = `s`.`user_id`))) ;
+
 --
 -- Индексы сохранённых таблиц
 --
@@ -125,6 +177,7 @@ ALTER TABLE `questions`
 --
 ALTER TABLE `sessions`
   ADD PRIMARY KEY (`session_id`),
+  ADD UNIQUE KEY `session_hash` (`session_hash`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -141,17 +194,17 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `answers`
 --
 ALTER TABLE `answers`
-  MODIFY `answer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `answer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 --
 -- AUTO_INCREMENT для таблицы `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 --
 -- AUTO_INCREMENT для таблицы `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 --
 -- AUTO_INCREMENT для таблицы `users`
 --
