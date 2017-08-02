@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Авг 01 2017 г., 13:43
+-- Время создания: Авг 02 2017 г., 13:52
 -- Версия сервера: 10.1.21-MariaDB
 -- Версия PHP: 5.6.30
 
@@ -88,14 +88,14 @@ CREATE TABLE `sessions_info_view` (
 -- (See below for the actual view)
 --
 CREATE TABLE `session_dialog_view` (
-`answer_id` int(11)
-,`answer_message` text
-,`answer_date` timestamp
-,`session_id` int(11)
+`session_hash` varchar(32)
 ,`question_id` int(11)
 ,`question_message` text
 ,`question_date` timestamp
-,`session_hash` varchar(32)
+,`session_id` int(11)
+,`answer_id` int(11)
+,`answer_message` text
+,`answer_date` timestamp
 );
 
 -- --------------------------------------------------------
@@ -143,7 +143,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `session_dialog_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `session_dialog_view`  AS  select `a`.`answer_id` AS `answer_id`,`a`.`answer_message` AS `answer_message`,`a`.`answer_date` AS `answer_date`,`a`.`session_id` AS `session_id`,`a`.`question_id` AS `question_id`,`q`.`question_message` AS `question_message`,`q`.`question_date` AS `question_date`,`s`.`session_hash` AS `session_hash` from ((`answers` `a` left join `questions` `q` on((`q`.`question_id` = `a`.`question_id`))) join `sessions` `s` on((`s`.`session_id` = `a`.`session_id`))) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `session_dialog_view`  AS  select `s`.`session_hash` AS `session_hash`,`q`.`question_id` AS `question_id`,`q`.`question_message` AS `question_message`,`q`.`question_date` AS `question_date`,`q`.`session_id` AS `session_id`,`a`.`answer_id` AS `answer_id`,`a`.`answer_message` AS `answer_message`,`a`.`answer_date` AS `answer_date` from ((`sessions` `s` join `questions` `q` on((`q`.`session_id` = `s`.`session_id`))) left join `answers` `a` on((`a`.`question_id` = `q`.`question_id`))) ;
 
 -- --------------------------------------------------------
 
@@ -194,17 +194,17 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `answers`
 --
 ALTER TABLE `answers`
-  MODIFY `answer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `answer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
 --
 -- AUTO_INCREMENT для таблицы `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 --
 -- AUTO_INCREMENT для таблицы `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `session_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 --
 -- AUTO_INCREMENT для таблицы `users`
 --
