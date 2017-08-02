@@ -208,7 +208,26 @@ module.exports = function(io, reducer, actions, telegram){
 			reducer(actions.SET_ANSWER(data), function(response){
 				io.broadcastGetSessionsDialog({session_id: data.session_id});
 				io.broadcastGetSessionInfo(data.session_id);
+				io.broadcastGetSessions();
 				telegram.sendMessage(data.hash, data.message);
+			});
+		});
+		socket.on(Types.START_BOT, function(data){
+			reducer(actions.START_BOT(data), function(response){
+				reducer(actions.GET_SESSION_INFO(data), function(response){
+					telegram.connections.find(function(connection){
+						return connection.session_hash == response.session_hash;
+					}).bot = true;
+				});
+			});
+		});
+		socket.on(Types.STOP_BOT, function(data){
+			reducer(actions.STOP_BOT(data), function(response){
+				reducer(actions.GET_SESSION_INFO(data), function(response){
+					telegram.connections.find(function(connection){
+						return connection.session_hash == response.session_hash;
+					}).bot = false;
+				});
 			});
 		});
 	});
