@@ -9,7 +9,8 @@ telegram.connections = [];
 require("./ws/index.js")(
 	io, 
 	reducer, 
-	Events
+	Events,
+	telegram
 );
 require("./telegram/index.js")(
 	telegram,

@@ -60,7 +60,7 @@ function broadcastGetSessionsDialog(data){
 		}
 	});
 }
-module.exports = function(io, reducer, actions){
+module.exports = function(io, reducer, actions, telegram){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -201,7 +201,14 @@ module.exports = function(io, reducer, actions){
 			};
 			reducer(actions.GET_SESSION_DIALOG({session_id: data}), function(response){
 				socket.emit(Types.GET_SESSION_DIALOG, response);
-				socket.attributes.session_hash = response ? response[0].session_hash : null;
+				socket.attributes.session_hash = (response ? response[0].session_hash : null);
+			});
+		});
+		socket.on(Types.SET_ANSWER, function(data){
+			reducer(actions.SET_ANSWER(data), function(response){
+				io.broadcastGetSessionsDialog({session_id: data.session_id});
+				io.broadcastGetSessionInfo(data.session_id);
+				telegram.sendMessage(data.hash, data.message);
 			});
 		});
 	});
