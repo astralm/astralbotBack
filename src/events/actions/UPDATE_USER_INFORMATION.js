@@ -1,6 +1,6 @@
 module.exports = function(data, callback){
 	var result = Object.keys(data).filter(function(key){
-		return data[key] != null && key != "email_2";
+		return data[key] != null && data[key] != "" && key != "email_2";
 	});
 	this.mysql.query({
 		sql: 'UPDATE `users` SET ' + result.map(function(item){
