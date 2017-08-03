@@ -233,7 +233,7 @@ module.exports = function(io, reducer, actions, telegram){
 		socket.on(Types.UPDATE_USER_INFORMATION, function(data){
 			data.email_2 = socket.email;
 			reducer(actions.UPDATE_USER_INFORMATION(data), function(response){
-				reducer(actions.GET_USER(socket.email), function(response){
+				reducer(actions.GET_USER(data.email != null && data.email != '' ? data.email : socket.email), function(response){
 					socket.emit(Types.UPDATE_USER, response);
 					io.broadcastGetUsers();
 					io.broadcastGetSessions();
