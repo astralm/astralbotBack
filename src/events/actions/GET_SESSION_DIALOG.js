@@ -6,7 +6,6 @@ module.exports = function(data, callback){
 			+data.session_id || +data.session_hash
 		]
 	}, function(err, data){
-		console.log(data);
 		err ?
 			callback() :
 			callback(data || null);
