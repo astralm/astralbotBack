@@ -10,7 +10,8 @@ require("./ws/index.js")(
 	io, 
 	reducer, 
 	Events,
-	telegram
+	telegram,
+	apiai
 );
 require("./telegram/index.js")(
 	telegram,
