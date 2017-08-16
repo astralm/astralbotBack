@@ -230,18 +230,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 							}
 						}
 					}
-					/*try{
-						telegram.connections.find(function(connection){
-							return connection.session_hash == response.session_hash;
-						}).bot = true;
-					} catch (e){
-						for(var key in io.sockets.sockets){
-							var item = io.sockets.sockets[key];
-							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
-								item.bot = true
-							}
-						}
-					}*/
 				});
 			});
 		});
@@ -260,18 +248,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 							}
 						}
 					}
-					/*try{
-						telegram.connections.find(function(connection){
-							return connection.session_hash == response.session_hash;
-						}).bot = false;
-					} catch(e){
-						for(var key in io.sockets.sockets){
-							var item = io.sockets.sockets[key];
-							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
-								item.bot = false;
-							}
-						}
-					}*/
 				});
 			});
 		});
