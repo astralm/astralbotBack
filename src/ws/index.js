@@ -66,6 +66,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
 	io.broadcastGetSessionsDialog = broadcastGetSessionsDialog.bind({reducer, actions, io});
 	io.on('connection', function(socket){
+		socket.bot = true;
 		socket.on(Types.LOGIN, function(data){
 			socket.email = data.email;
 			socket.switch = "";
@@ -209,7 +210,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 				io.broadcastGetSessionsDialog({session_id: data.session_id});
 				io.broadcastGetSessionInfo(data.session_id);
 				io.broadcastGetSessions();
-				if(telegram.connections.find(function(item){return item.session_hash == data.hash})){
+				if(data.hash.length < 32){
 					telegram.sendMessage(data.hash, data.message);
 				}
 			});
@@ -217,36 +218,60 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		socket.on(Types.START_BOT, function(data){
 			reducer(actions.START_BOT(data), function(response){
 				reducer(actions.GET_SESSION_INFO(data), function(response){
-					try{
+					if(response.session_hash < 32){
+						telegram.connections.find(function(connection){
+							return connection.session_hash == response.session_hash;
+						}).bot = true;
+					} else {
+						for(var key in io.sockets.sockets){
+							var item = io.sockets.sockets[key];
+							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
+								item.bot = true
+							}
+						}
+					}
+					/*try{
 						telegram.connections.find(function(connection){
 							return connection.session_hash == response.session_hash;
 						}).bot = true;
 					} catch (e){
 						for(var key in io.sockets.sockets){
 							var item = io.sockets.sockets[key];
-							if (item.attributes.session_id == data) {
+							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
 								item.bot = true
 							}
 						}
-					}
+					}*/
 				});
 			});
 		});
 		socket.on(Types.STOP_BOT, function(data){
 			reducer(actions.STOP_BOT(data), function(response){
 				reducer(actions.GET_SESSION_INFO(data), function(response){
-					try{
+					if(response.session_hash < 32){
+						telegram.connections.find(function(connection){
+							return connection.session_hash == response.session_hash;
+						}).bot = false;
+					} else {
+						for(var key in io.sockets.sockets){
+							var item = io.sockets.sockets[key];
+							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
+								item.bot = false;
+							}
+						}
+					}
+					/*try{
 						telegram.connections.find(function(connection){
 							return connection.session_hash == response.session_hash;
 						}).bot = false;
 					} catch(e){
 						for(var key in io.sockets.sockets){
 							var item = io.sockets.sockets[key];
-							if (item.attributes.session_id == data) {
+							if (item.attributes && item.attributes.session_id && item.attributes.session_id == data) {
 								item.bot = false;
 							}
 						}
-					}
+					}*/
 				});
 			});
 		});
@@ -262,7 +287,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on("WIDGET_GET_TOKEN", function(data){
 			socket.type = "widget";
-			socket.bot = true;
 			if(!socket.token){
 				var random = [],
 					number = Math.ceil(Math.random()*2);
@@ -277,7 +301,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			});
 		});
 		socket.on(Types.GET_SESSION_ID, function(data){
-			socket.bot = true;
 			socket.token = data;
 			socket.switch = Types.GET_SESSION_DIALOG;
 			socket.attributes = {
