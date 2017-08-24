@@ -79,8 +79,17 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			});
 		});
 		socket.on('disconnect', function(){
-			reducer(actions.LOGOUT({email: socket.email}));
-			io.broadcastGetUsers();
+			if(socket.email){
+				reducer(actions.LOGOUT({email: socket.email}));
+				io.broadcastGetUsers();
+			}
+			if(socket.type == "widget"){
+				reducer(actions.SET_INACTIVE({session_hash: socket.attributes.session_hash || socket.token, session_id: socket.attributes.session_id}), function(){
+					io.broadcastGetSessions();
+					console.log(socket.attributes.session_id);
+					io.broadcastGetSessionInfo(socket.attributes.session_id);
+				});
+			}
 		});
 		socket.on(Types.LOGOUT, function(){
 			socket.switch = "";
@@ -278,6 +287,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on(Types.GET_SESSION_ID, function(data){
 			socket.token = data;
+			socket.type = "widget";
 			socket.switch = Types.GET_SESSION_DIALOG;
 			socket.attributes = {
 				session_hash: data
@@ -285,6 +295,11 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			reducer(actions.GET_SESSION_ID(data), function(response){
 				socket.emit(Types.GET_SESSION_ID, response);
 				socket.attributes.session_id = response;
+				reducer(actions.SET_ACTIVE({session_hash: data}), function(){
+					io.broadcastGetSessions();
+					console.log(socket.attributes.session_id);
+					io.broadcastGetSessionInfo(socket.attributes.session_id);
+				});
 			});
 		});
 		socket.on("WIDGET_MESSAGE", function(data){
