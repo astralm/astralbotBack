@@ -15,8 +15,76 @@ function broadcastGetSessionInfo(session_id){
 		}
 	});
 }
-function broadcastGetSessions(data){
-	
+function broadcastGetSessions(){
+	var sockets = this.io.sockets.sockets,
+		options = [];
+	for (var key in sockets){
+		var socket = sockets[key];
+		if(socket.switch == Types.GET_SESSIONS){
+			var attributes = socket.hasOwnProperty("attributes") ? socket.attributes : false,
+				filters = attributes ? attributes.filters.sort().join(",") : "",
+				order = attributes ? attributes.order : {name: "session_id", desc: true},
+				offset = attributes ? +attributes.offset : 0,
+				user_id = attributes ? +attributes.user_id : 0;
+			if(options.length > 0){
+				for (var i = 0; i < options.length; i++){
+					var option = options[i],
+						_filters = option.filters.sort().join(","),
+						_order = option.order,
+						_offset = option.offset;
+					if(_filters != filters || _order.name != order.name || _order.desc != order.desc || _offset != offset){
+						options.push({
+							filters: filters ? socket.attributes.filters : [],
+							order: order,
+							offset: offset,
+							objects: [socket]
+						});
+					} else {
+						option.objects.push(socket);
+					}
+				}
+			} else {
+				options.push({
+					filters: filters ? socket.attributes.filters : [],
+					order: order,
+					offset: offset,
+					objects: [socket]
+				});
+			}
+		}
+	}
+	if(options.length > 0){
+		for(var i = 0; i < options.length; i++){
+			var option = options[i];
+			if(option.filters.indexOf("user") != -1){
+				for(var l = 0; l < option.objects.length; l++){
+					var user_id = option.objects[l].attributes.user_id;
+					this.reducer(this.actions[Types.GET_SESSIONS]({
+						filters: option.filters,
+						order: option.order,
+						offset: option.offset,
+						user_id: user_id
+					}), (function(key, object, response){
+						if(object.objects[key]){
+							object.objects[key].emit(Types.GET_SESSIONS, response);
+						}
+					}).bind(this, l, option));
+				}
+			} else {
+				this.reducer(this.actions[Types.GET_SESSIONS]({
+					filters: option.filters,
+					order: option.order,
+					offset: option.offset
+				}), (function(object, response){
+					for(var j = 0; j < object.objects.length; j++){
+						if(object.objects[j]){
+							object.objects[j].emit(Types.GET_SESSIONS, response);
+						}
+					}
+				}).bind(this, option));
+			}
+		}
+	}
 }
 function broadcastGetSessionsDialog(data){
 	var _this = this;
@@ -97,6 +165,11 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			});
 		});
 		socket.on("SET_FILTER", function(data){
+			if(!socket.hasOwnProperty("attributes")){
+				socket.attributes = {
+					filters: []
+				};
+			}
 			socket.attributes.offset = data.offset;
 			socket.attributes.order = data.order;
 			var key = socket.attributes.filters.indexOf(data.filter);
@@ -109,7 +182,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			} else {
 				socket.attributes.filters = [];
 			}
-			console.log(socket.attributes.filters, data.filter, key);
 			reducer(actions.GET_SESSIONS(socket.attributes), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
 			});
