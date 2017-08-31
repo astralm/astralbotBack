@@ -167,20 +167,23 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		socket.on("SET_FILTER", function(data){
 			if(!socket.hasOwnProperty("attributes")){
 				socket.attributes = {
-					filters: []
+					filters: [],
+					user_id: socket.user_id
 				};
 			}
 			socket.attributes.offset = data.offset;
 			socket.attributes.order = data.order;
 			var key = socket.attributes.filters.indexOf(data.filter);
-			if(data.filter != "all"){
-				if(key >= 0){
-					socket.attributes.filters.splice(key, 1);
+			if(data.filter){
+				if(data.filter != "all"){
+					if(key >= 0){
+						socket.attributes.filters.splice(key, 1);
+					} else {
+						socket.attributes.filters.push(data.filter);
+					}
 				} else {
-					socket.attributes.filters.push(data.filter);
+					socket.attributes.filters = [];
 				}
-			} else {
-				socket.attributes.filters = [];
 			}
 			reducer(actions.GET_SESSIONS(socket.attributes), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
