@@ -5,41 +5,6 @@ function broadcastGetUsers(){
 		_this.io.sockets.emit(Types.GET_USERS, response);
 	});
 }
-function broadcastGetSessions(){
-	var _this = this,
-		switches = (function(sockets){
-			var res = [];
-			for(var socketKey in sockets){
-				var socket = sockets[socketKey];
-				if (socket.switch && socket.switch != Types.GET_SESSION_DIALOG && socket.switch != Types.GET_SESSION_INFO)
-					res.push("s" + socket.switch + "a" + socket.attributes.offset + "u" + (socket.attributes.user_id ? socket.attributes.user_id : ""));
-			}
-			return res;
-		})(_this.io.sockets.sockets).filter(function(str, strKey, self){
-			return self.indexOf(str) == strKey;
-		}).map(function(str){
-			return str.match(/s(.*)a(.*)u(.*)/).filter(function(option, key){
-				return [1,2,3].indexOf(key) > -1;
-			});
-		});
-	switches.forEach(function(action, actionKey){
-		_this.reducer(_this.actions[action[0]](!action[2] ? action[1] : {offset: action[1], user_id: action[2]}), function(response){
-			switches[actionKey].push(response);
-			(function(sockets){
-				for(var socketKey in sockets){
-					var socket = sockets[socketKey];
-					socket.emit(socket.switch, switches.filter(function(option){
-						return option[0] == socket.switch && 
-							   option[1] == socket.attributes.offset && 
-								   socket.attributes.user_id ?
-								      option[2] == socket.attributes.user_id :
-								      true;
-					})[0][3]);
-				}
-			})(_this.io.sockets.sockets);
-		});
-	});
-}
 function broadcastGetSessionInfo(session_id){
 	var _this = this;
 	this.reducer(this.actions.GET_SESSION_INFO(session_id), function(response){
@@ -49,6 +14,77 @@ function broadcastGetSessionInfo(session_id){
 				socket.emit(Types.GET_SESSION_INFO, response);
 		}
 	});
+}
+function broadcastGetSessions(){
+	var sockets = this.io.sockets.sockets,
+		options = [];
+	for (var key in sockets){
+		var socket = sockets[key];
+		if(socket.switch == Types.GET_SESSIONS){
+			var attributes = socket.hasOwnProperty("attributes") ? socket.attributes : false,
+				filters = attributes ? attributes.filters.sort().join(",") : "",
+				order = attributes ? attributes.order : {name: "session_id", desc: true},
+				offset = attributes ? +attributes.offset : 0,
+				user_id = attributes ? +attributes.user_id : 0;
+			if(options.length > 0){
+				for (var i = 0; i < options.length; i++){
+					var option = options[i],
+						_filters = option.filters.sort().join(","),
+						_order = option.order,
+						_offset = option.offset;
+					if(_filters != filters || _order.name != order.name || _order.desc != order.desc || _offset != offset){
+						options.push({
+							filters: filters ? socket.attributes.filters : [],
+							order: order,
+							offset: offset,
+							objects: [socket]
+						});
+					} else {
+						option.objects.push(socket);
+					}
+				}
+			} else {
+				options.push({
+					filters: filters ? socket.attributes.filters : [],
+					order: order,
+					offset: offset,
+					objects: [socket]
+				});
+			}
+		}
+	}
+	if(options.length > 0){
+		for(var i = 0; i < options.length; i++){
+			var option = options[i];
+			if(option.filters.indexOf("user") != -1){
+				for(var l = 0; l < option.objects.length; l++){
+					var user_id = option.objects[l].attributes.user_id;
+					this.reducer(this.actions[Types.GET_SESSIONS]({
+						filters: option.filters,
+						order: option.order,
+						offset: option.offset,
+						user_id: user_id
+					}), (function(key, object, response){
+						if(object.objects[key]){
+							object.objects[key].emit(Types.GET_SESSIONS, response);
+						}
+					}).bind(this, l, option));
+				}
+			} else {
+				this.reducer(this.actions[Types.GET_SESSIONS]({
+					filters: option.filters,
+					order: option.order,
+					offset: option.offset
+				}), (function(object, response){
+					for(var j = 0; j < object.objects.length; j++){
+						if(object.objects[j]){
+							object.objects[j].emit(Types.GET_SESSIONS, response);
+						}
+					}
+				}).bind(this, option));
+			}
+		}
+	}
 }
 function broadcastGetSessionsDialog(data){
 	var _this = this;
@@ -75,6 +111,9 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 				io.broadcastGetUsers();
 			});
 			reducer(actions.UPDATE_USER(socket.email), function(response){
+				if(response && response[0]){
+					socket.user_id = response[0].user_id;
+				}
 				socket.emit(Types.UPDATE_USER, response);
 			});
 		});
@@ -86,7 +125,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			if(socket.type == "widget"){
 				reducer(actions.SET_INACTIVE({session_hash: socket.attributes.session_hash || socket.token, session_id: socket.attributes.session_id}), function(){
 					io.broadcastGetSessions();
-					console.log(socket.attributes.session_id);
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 				});
 			}
@@ -113,74 +151,42 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		socket.on(Types.GET_SESSIONS, function(data){
 			socket.switch = Types.GET_SESSIONS;
 			socket.attributes = {
-				offset: data
+				offset: data.offset,
+				filters: Array.apply(this, data.filters),
+				order: {
+					name: data.order.name,
+					desc: data.order.desc
+				},
+				user_id: socket.user_id
 			};
+			data.user_id = socket.user_id;
 			reducer(actions.GET_SESSIONS(data), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
 			});
 		});
-		socket.on(Types.GET_USER_SESSIONS, function(data){
-			socket.switch = Types.GET_USER_SESSIONS;
-			socket.attributes = {
-				offset: data.offset,
-				user_id: data.user_id
-			};
-			reducer(actions.GET_USER_SESSIONS(data), function(response){
-				socket.emit(Types.GET_USER_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_FREE_SESSIONS, function(data){
-			socket.switch = Types.GET_FREE_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_FREE_SESSIONS(data), function(response){
-				socket.emit(Types.GET_FREE_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_BUSY_SESSIONS, function(data){
-			socket.switch = Types.GET_BUSY_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_BUSY_SESSIONS(data), function(response){
-				socket.emit(Types.GET_BUSY_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_ERROR_SESSIONS, function(data){
-			socket.switch = Types.GET_ERROR_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_ERROR_SESSIONS(data), function(response){
-				socket.emit(Types.GET_ERROR_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_SUCCESS_SESSIONS, function(data){
-			socket.switch = Types.GET_SUCCESS_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_SUCCESS_SESSIONS(data), function(response){
-				socket.emit(Types.GET_SUCCESS_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_ACTIVE_SESSIONS, function(data){
-			socket.switch = Types.GET_ACTIVE_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_ACTIVE_SESSIONS(data), function(response){
-				socket.emit(Types.GET_ACTIVE_SESSIONS, response);
-			});
-		});
-		socket.on(Types.GET_INACTIVE_SESSIONS, function(data){
-			socket.switch = Types.GET_INACTIVE_SESSIONS;
-			socket.attributes = {
-				offset: data
-			};
-			reducer(actions.GET_INACTIVE_SESSIONS(data), function(response){
-				socket.emit(Types.GET_INACTIVE_SESSIONS, response);
+		socket.on("SET_FILTER", function(data){
+			if(!socket.hasOwnProperty("attributes")){
+				socket.attributes = {
+					filters: [],
+					user_id: socket.user_id
+				};
+			}
+			socket.attributes.offset = data.offset;
+			socket.attributes.order = data.order;
+			var key = socket.attributes.filters.indexOf(data.filter);
+			if(data.filter){
+				if(data.filter != "all"){
+					if(key >= 0){
+						socket.attributes.filters.splice(key, 1);
+					} else {
+						socket.attributes.filters.push(data.filter);
+					}
+				} else {
+					socket.attributes.filters = [];
+				}
+			}
+			reducer(actions.GET_SESSIONS(socket.attributes), function(response){
+				socket.emit(Types.GET_SESSIONS, response);
 			});
 		});
 		socket.on(Types.BIND_SESSION, function(data){
@@ -297,7 +303,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 				socket.attributes.session_id = response;
 				reducer(actions.SET_ACTIVE({session_hash: data}), function(){
 					io.broadcastGetSessions();
-					console.log(socket.attributes.session_id);
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 				});
 			});
