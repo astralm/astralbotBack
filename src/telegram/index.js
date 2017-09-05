@@ -44,11 +44,16 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 					reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
 					connection.error = false;
 				}
-				telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
+				if(response.result.fulfillment.speech){
+					telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
+				}
 				io.broadcastGetSessionsDialog({session_hash: message.chat.id});
+				io.broadcastGetSessionInfo(connection.session_id);
 				io.broadcastGetSessions();
 			}
 		});
-		request.end();
+		setTimeout(function(){
+			request.end();
+		}, 7000);
 	});
 }
