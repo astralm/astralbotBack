@@ -176,6 +176,26 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			var key = socket.attributes.filters.indexOf(data.filter);
 			if(data.filter){
 				if(data.filter != "all"){
+					switch(data.filter){
+						case 'active':
+						case 'inactive': 
+							var filterKey = socket.attributes.filters.indexOf(data.filter == 'active' ? 'inactive' : 'active');
+							break;
+						case 'error':
+						case 'success':
+							var filterKey = socket.attributes.filters.indexOf(data.filter == 'error' ? 'success' : 'error');
+							break;
+						case 'free':
+						case 'busy':
+							var filterKey = socket.attributes.filters.indexOf(data.filter == 'free' ? 'busy' : 'free');
+							break;
+						case 'user':
+							var filterKey = socket.attributes.filters.indexOf('free');
+							break;
+					}
+					if(filterKey > -1){
+						socket.attributes.filters.splice(filterKey, 1);
+					}
 					if(key >= 0){
 						socket.attributes.filters.splice(key, 1);
 					} else {
