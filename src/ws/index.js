@@ -325,14 +325,14 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 							}
 							io.broadcastGetSessionsDialog({session_hash: socket.token});
 							io.broadcastGetSessions();
-							io.broadcastGetSessionInfo(socket.token);
+							io.broadcastGetSessionInfo(socket.attributes.session_id);
 						});
 						setTimeout(function(){
 							request.end();
 						}, 7000);
 					}
 					socket.attributes.session_hash = socket.token;
-					io.broadcastGetSessionInfo(socket.token);
+					io.broadcastGetSessionInfo(socket.attributes.session_id);
 					io.broadcastGetSessionsDialog({session_hash: socket.token});
 					io.broadcastGetSessions();
 				});
