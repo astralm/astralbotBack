@@ -35,22 +35,25 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 		io.broadcastGetSessions();
 		var request = apiai.textRequest(message.text, {sessionId: message.chat.id});
 		request.on('response', function(response){
-			if(connection.bot){
-				reducer(actions.SET_ANSWER({hash: message.chat.id, message: response.result.fulfillment.speech}));
-				if(response.result.action == 'input.unknown' && connection.error == false){
-					reducer(actions.SET_ERROR_SESSION(message.chat.id));
-					connection.error = true;
-				} else if (response.result.action != 'input.unknown' && connection.error == true){
-					reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
-					connection.error = false;
+			reducer(actions.GET_BOT_STATUS({session_hash: message.chat.id}), function(data){
+				data = data[0];
+				if(data.bot_work){
+					reducer(actions.SET_ANSWER({hash: message.chat.id, message: response.result.fulfillment.speech}));
+					if(response.result.action == 'input.unknown' && connection.error == false){
+						reducer(actions.SET_ERROR_SESSION(message.chat.id));
+						connection.error = true;
+					} else if (response.result.action != 'input.unknown' && connection.error == true){
+						reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
+						connection.error = false;
+					}
+					if(response.result.fulfillment.speech){
+						telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
+					}
+					io.broadcastGetSessionsDialog({session_hash: message.chat.id});
+					io.broadcastGetSessionInfo(connection.session_id);
+					io.broadcastGetSessions();
 				}
-				if(response.result.fulfillment.speech){
-					telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
-				}
-				io.broadcastGetSessionsDialog({session_hash: message.chat.id});
-				io.broadcastGetSessionInfo(connection.session_id);
-				io.broadcastGetSessions();
-			}
+			});
 		});
 		setTimeout(function(){
 			request.end();
