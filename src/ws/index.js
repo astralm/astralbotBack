@@ -312,24 +312,30 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on("WIDGET_MESSAGE", function(data){
 			reducer(actions.SET_QUESTION({message: data, hash: socket.token}), function(response){
-				if(socket.bot){
-					var request = apiai.textRequest(data, {sessionId: socket.token});
-					request.on('response', function(response){
-						reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
-						if(response.result.action == 'input.unknown'){
-							reducer(actions.SET_ERROR_SESSION(socket.token));
-						} else if (response.result.action != 'input.unknown'){
-							reducer(actions.REMOVE_ERROR_SESSION(socket.token));
-						}
-						io.broadcastGetSessionsDialog({session_hash: socket.token});
-						io.broadcastGetSessions();
-					});
-					request.end();
-				}
-				socket.attributes.session_hash = socket.token;
-				io.broadcastGetSessionInfo(socket.token);
-				io.broadcastGetSessionsDialog({session_hash: socket.token});
-				io.broadcastGetSessions();
+				reducer(actions.GET_BOT_STATUS({session_hash: socket.token}), function(bot_status_response){
+					var bot_status = bot_status_response[0].bot_work;
+					if(bot_status){
+						var request = apiai.textRequest(data, {sessionId: socket.token});
+						request.on('response', function(response){
+							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
+							if(response.result.action == 'input.unknown'){
+								reducer(actions.SET_ERROR_SESSION(socket.token));
+							} else if (response.result.action != 'input.unknown'){
+								reducer(actions.REMOVE_ERROR_SESSION(socket.token));
+							}
+							io.broadcastGetSessionsDialog({session_hash: socket.token});
+							io.broadcastGetSessions();
+							io.broadcastGetSessionInfo(socket.token);
+						});
+						setTimeout(function(){
+							request.end();
+						}, 7000);
+					}
+					socket.attributes.session_hash = socket.token;
+					io.broadcastGetSessionInfo(socket.token);
+					io.broadcastGetSessionsDialog({session_hash: socket.token});
+					io.broadcastGetSessions();
+				});
 			});
 		});
 	});
