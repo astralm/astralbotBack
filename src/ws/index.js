@@ -292,6 +292,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			}
 			reducer(actions.SET_SESSION(socket.token), function(response){
 				socket.emit("WIDGET_SET_TOKEN", socket.token);
+				io.broadcastGetSessions();
 			});
 		});
 		socket.on(Types.GET_SESSION_ID, function(data){
@@ -303,9 +304,10 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			};
 			reducer(actions.GET_SESSION_ID(data), function(response){
 				socket.emit(Types.GET_SESSION_ID, response);
-				socket.attributes.session_id = response;
+				socket.attributes.session_id = response[0].session_id;
 				reducer(actions.SET_ACTIVE({session_hash: data}), function(){
 					io.broadcastGetSessions();
+					console.log(socket.attributes);
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 				});
 			});
