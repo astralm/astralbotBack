@@ -39,13 +39,27 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 				data = data[0];
 				if(data.bot_work){
 					reducer(actions.SET_ANSWER({hash: message.chat.id, message: response.result.fulfillment.speech}));
-					if(response.result.action == 'input.unknown' && connection.error == false){
-						reducer(actions.SET_ERROR_SESSION(message.chat.id));
-						connection.error = true;
-					} else if (response.result.action != 'input.unknown' && connection.error == true){
-						reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
-						connection.error = false;
-					}
+					reducer(actions.GET_SESSION_INFO(connection.session_id), function(session){
+						session = session[0] || {};
+						if(session.session_error && response.result.action != 'input.unknown'){
+							reducer(actions.REMOVE_ERROR_SESSION(session.session_hash), function(){
+								io.broadcastGetSessions();
+								io.broadcastGetSessionInfo(session.session_id);
+							});
+						} else if(!session.session_error && response.result.action == 'input.unknown'){
+							reducer(actions.SET_ERROR_SESSION(session.session_hash), function(){
+								io.broadcastGetSessions();
+								io.broadcastGetSessionInfo(session.session_id);
+							});
+						}
+					});
+					// if(response.result.action == 'input.unknown' && connection.error == false){
+					// 	reducer(actions.SET_ERROR_SESSION(message.chat.id));
+					// 	connection.error = true;
+					// } else if (response.result.action != 'input.unknown' && connection.error == true){
+					// 	reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
+					// 	connection.error = false;
+					// }
 					if(response.result.fulfillment.speech){
 						telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
 					}
