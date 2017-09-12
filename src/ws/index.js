@@ -249,6 +249,15 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 					telegram.sendMessage(data.hash, data.message);
 				}
 			});
+			reducer(actions[Types.GET_SESSION_INFO](data.session_id), function(response){
+				response = response[0] || {};
+				if(response.session_error){
+					reducer(actions[Types.REMOVE_ERROR_SESSION](response.session_hash), function(){
+						io.broadcastGetSessionInfo(response.session_id);
+						io.broadcastGetSessions();
+					});
+				}
+			});
 		});
 		socket.on(Types.START_BOT, function(data){
 			reducer(actions.START_BOT(data), function(response){
