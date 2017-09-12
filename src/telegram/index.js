@@ -53,13 +53,6 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 							});
 						}
 					});
-					// if(response.result.action == 'input.unknown' && connection.error == false){
-					// 	reducer(actions.SET_ERROR_SESSION(message.chat.id));
-					// 	connection.error = true;
-					// } else if (response.result.action != 'input.unknown' && connection.error == true){
-					// 	reducer(actions.REMOVE_ERROR_SESSION(message.chat.id));
-					// 	connection.error = false;
-					// }
 					if(response.result.fulfillment.speech){
 						telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
 					}
