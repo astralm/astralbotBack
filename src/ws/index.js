@@ -219,6 +219,11 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			reducer(actions.UNBIND_SESSION(data), function(response){
 				io.broadcastGetSessions();
 				io.broadcastGetSessionInfo(data.session_id);
+				reducer(actions[Types.START_BOT](data.session_id), function(){
+					reducer(actions.GET_BOT_STATUS({session_id: data.session_id}), function(status){
+						socket.emit(Types.GET_BOT_STATUS, status);
+					});
+				});
 			});
 		});
 		socket.on(Types.GET_SESSION_INFO, function(data){
