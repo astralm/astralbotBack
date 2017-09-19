@@ -354,5 +354,11 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 				});
 			});
 		});
+		socket.on(Types.REMOVE_ERROR_SESSION, function(data){
+			reducer(actions[Types.REMOVE_ERROR_SESSION](data.session_hash), function(){
+				io.broadcastGetSessions();
+				io.broadcastGetSessionInfo(data.session_id);
+			});
+		});
 	});
 }
