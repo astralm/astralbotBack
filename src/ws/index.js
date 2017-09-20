@@ -108,13 +108,15 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			socket.switch = "";
 			reducer(actions.LOGIN(data), function(response){
 				socket.emit(Types.LOGIN, response);
-				io.broadcastGetUsers();
-			});
-			reducer(actions.UPDATE_USER(socket.email), function(response){
-				if(response && response[0]){
-					socket.user_id = response[0].user_id;
+				if(response){
+					reducer(actions.UPDATE_USER(socket.email), function(response){
+						if(response && response[0]){
+							socket.user_id = response[0].user_id;
+						}
+						socket.emit(Types.UPDATE_USER, response);
+					});
+					io.broadcastGetUsers();
 				}
-				socket.emit(Types.UPDATE_USER, response);
 			});
 		});
 		socket.on('disconnect', function(){
