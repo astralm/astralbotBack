@@ -96,7 +96,7 @@ function broadcastGetSessionsDialog(data){
 		}
 	});
 }
-module.exports = function(io, reducer, actions, telegram, apiai){
+module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -360,6 +360,11 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			reducer(actions[Types.REMOVE_ERROR_SESSION](data.session_hash), function(){
 				io.broadcastGetSessions();
 				io.broadcastGetSessionInfo(data.session_id);
+			});
+		});
+		socket.on(Types.SEND_EMAIL, function(data){
+			reducer(actions[Types.SEND_EMAIL](data), function(response){
+				socket.emit(Types.SEND_EMAIL, response);
 			});
 		});
 	});
