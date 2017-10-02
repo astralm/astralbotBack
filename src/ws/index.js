@@ -96,11 +96,23 @@ function broadcastGetSessionsDialog(data){
 		}
 	});
 }
+function broadcastGetDispatches(){
+	var _this = this;
+	this.reducer(this.actions[Types.GET_DISPATCHES](), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_DISPATCHES){
+				socket.emit(Types.GET_DISPATCHES, response);
+			}
+		}
+	});
+}
 module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
 	io.broadcastGetSessionsDialog = broadcastGetSessionsDialog.bind({reducer, actions, io});
+	io.broadcastGetDispatches = broadcastGetDispatches.bind({reducer, actions, io});
 	io.on('connection', function(socket){
 		socket.bot = true;
 		socket.on(Types.LOGIN, function(data){
@@ -252,7 +264,7 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				io.broadcastGetSessionsDialog({session_id: data.session_id});
 				io.broadcastGetSessionInfo(data.session_id);
 				io.broadcastGetSessions();
-				if(data.hash.length < 32){
+				if(data.hash.toString().length < 32){
 					telegram.sendMessage(data.hash, data.message);
 				}
 			});
@@ -323,7 +335,6 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				socket.attributes.session_id = response[0].session_id;
 				reducer(actions.SET_ACTIVE({session_hash: data}), function(){
 					io.broadcastGetSessions();
-					console.log(socket.attributes);
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 				});
 			});
@@ -365,6 +376,53 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 		socket.on(Types.SEND_EMAIL, function(data){
 			reducer(actions[Types.SEND_EMAIL](data), function(response){
 				socket.emit(Types.SEND_EMAIL, response);
+			});
+		});
+		socket.on(Types.GET_DISPATCHES, function(data){
+			socket.switch = Types.GET_DISPATCHES;
+			reducer(actions[Types.GET_DISPATCHES](), function(response){
+				socket.emit(Types.GET_DISPATCHES, response);
+			});
+		});
+		socket.on(Types.DELETE_DISPATCH, function(data){
+			reducer(actions[Types.DELETE_DISPATCH](data), function(response){
+				io.broadcastGetDispatches();
+			});
+		});
+		socket.on(Types.NEW_DISPATCH, function(data){
+			reducer(actions[Types.GET_ALL_SESSIONS](), function(responce){
+				for(var i = 0; i < responce.length; i++){
+					var session = responce[i];
+					if(data.dispatch_telegram && session.session_hash.toString().length < 32){
+						reducer(actions[Types.SET_ANSWER]({
+							hash: session.session_hash, 
+							session_id: session.session_id, 
+							message: data.dispatch_message
+						}), (function(obj, response){
+							if(response){
+								telegram.sendMessage(obj.hash, obj.message);
+								io.broadcastGetSessionsDialog({session_id: obj.id});
+								io.broadcastGetSessionInfo(obj.id);
+								io.broadcastGetSessions();
+							}
+						}).bind(this, {hash: session.session_hash, message: data.dispatch_message, id: session.session_id}));
+					} else if (data.dispatch_widget && session.session_hash.toString().length == 32) {
+						reducer(actions[Types.SET_ANSWER]({
+							hash: session.session_hash, 
+							session_id: session.session_id, 
+							message: data.dispatch_message
+						}), (function(obj, response){
+							if(response){
+								io.broadcastGetSessionsDialog({session_id: obj.id});
+								io.broadcastGetSessionInfo(obj.id);
+								io.broadcastGetSessions();
+							}
+						}).bind(this, {hash: session.session_hash, message: data.dispatch_message, id: session.session_id}))
+					}
+				}
+				reducer(actions[Types.NEW_DISPATCH](data), function(response){
+					io.broadcastGetDispatches();
+				});
 			});
 		});
 	});
