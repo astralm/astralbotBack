@@ -107,7 +107,7 @@ function broadcastGetDispatches(){
 		}
 	});
 }
-module.exports = function(io, reducer, actions, telegram, apiai, transporter){
+module.exports = function(io, reducer, actions, telegram, botengine, transporter){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -344,10 +344,11 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				reducer(actions.GET_BOT_STATUS({session_hash: socket.token}), function(bot_status_response){
 					var bot_status = bot_status_response[0].bot_work;
 					if(bot_status){
-						var request = apiai.textRequest(data, {sessionId: socket.token});
-						request.on('response', function(response){
-							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
-							if(response.result.action == 'input.unknown'){
+						var request = botengine.request(data, socket.token.toString());
+						request.callback(function(err, obj, response){
+							response = JSON.parse(response);
+							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.map(function(text){return text.message;}).join("")}));
+							if(response.result.fulfillment.length == 0){
 								reducer(actions.SET_ERROR_SESSION(socket.token));
 							} else if (response.result.action != 'input.unknown'){
 								reducer(actions.REMOVE_ERROR_SESSION(socket.token));
