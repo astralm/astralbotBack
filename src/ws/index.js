@@ -343,7 +343,7 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				}
 				socket.token = random.join("");
 			}
-			reducer(actions.SET_SESSION(socket.token), function(response){
+			reducer(actions.SET_SESSION({hash:socket.token, type:"widget"}), function(response){
 				socket.emit("WIDGET_SET_TOKEN", socket.token);
 				io.broadcastGetSessions();
 			});
