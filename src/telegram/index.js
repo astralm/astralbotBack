@@ -5,7 +5,7 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 		});
 		if(!connection){
 			connection = telegram.connections[telegram.connections.push({hash: message.chat.id, bot: true, error: false}) - 1];
-			reducer(actions.SET_SESSION(message.chat.id));
+			reducer(actions.SET_SESSION({hash:message.chat.id, type:"telegram"}));
 			reducer(actions.GET_SESSION_ID(message.chat.id), function(response){
 				connection.session_id = response[0].session_id;
 			});
