@@ -50,6 +50,36 @@ module.exports = function(data, callback){
 						value: "0"
 					});
 					break;
+				case "faq":
+					result.push({
+						name: "session_faq",
+						value: "1"
+					});
+					break;
+				case "sale":
+					result.push({
+						name: "session_sale",
+						value: "1"
+					});
+					break;
+				case "partner":
+					result.push({
+						name: "session_partner",
+						value: "1"
+					});
+					break;
+				case "telegram":
+					result.push({
+						name: "session_telegram",
+						value: "1"
+					});
+					break;
+				case "widget":
+					result.push({
+						name: "session_widget",
+						value: "1"
+					});
+					break;
 			}
 		}
 	}
