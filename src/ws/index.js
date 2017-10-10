@@ -206,9 +206,34 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 						case 'user':
 							var filterKey = socket.attributes.filters.indexOf('free');
 							break;
+						case 'faq':
+						case 'partner':
+						case 'sale':
+							var filterKey = [];
+							if(data.filter == "faq"){
+								filterKey.push(socket.attributes.filters.indexOf("partner"));
+								filterKey.push(socket.attributes.filters.indexOf("sale"));
+							} else if (data.filter == "partner"){
+								filterKey.push(socket.attributes.filters.indexOf("faq"));
+								filterKey.push(socket.attributes.filters.indexOf("sale"));
+							} else if (data.filter == "sale"){
+								filterKey.push(socket.attributes.filters.indexOf("partner"));
+								filterKey.push(socket.attributes.filters.indexOf("faq"));
+							}
+							break;
+						case 'telegram':
+						case 'widget':
+							var filterKey = socket.attributes.filters.indexOf(data.filter == 'telegram' ? 'widget' : 'telegram');
+							break;
 					}
-					if(filterKey > -1){
+					if(typeof filterKey != "object" && filterKey > -1){
 						socket.attributes.filters.splice(filterKey, 1);
+					} else if(typeof filterKey == "object" && filterKey.length > 0){
+						filterKey.forEach(obj => {
+							if(obj > -1){
+								socket.attributes.filters.splice(obj, 1);
+							}
+						});
 					}
 					if(key >= 0){
 						socket.attributes.filters.splice(key, 1);
