@@ -1,4 +1,4 @@
-module.exports = function(telegram, apiai, reducer, actions, io){
+module.exports = function(telegram, botengine, reducer, actions, io){
 	telegram.on("message", function(message){
 		var connection = telegram.connections.find(function(connection){
 			return connection.hash == message.chat.id;
@@ -33,28 +33,31 @@ module.exports = function(telegram, apiai, reducer, actions, io){
 		}));
 		io.broadcastGetSessionsDialog({session_hash: message.chat.id});
 		io.broadcastGetSessions();
-		var request = apiai.textRequest(message.text, {sessionId: message.chat.id});
-		request.on('response', function(response){
+		var request = botengine.request(message.text, "t" + message.chat.id.toString());
+		request.callback(function(err, obj, response){
+			response = JSON.parse(response);
 			reducer(actions.GET_BOT_STATUS({session_hash: message.chat.id}), function(data){
 				data = data[0];
 				if(data.bot_work){
-					reducer(actions.SET_ANSWER({hash: message.chat.id, message: response.result.fulfillment.speech}));
+					reducer(actions.SET_ANSWER({hash: message.chat.id, message: response.result.fulfillment.map(function(text){return text.message;}).join("")}));
 					reducer(actions.GET_SESSION_INFO(connection.session_id), function(session){
 						session = session[0] || {};
-						if(session.session_error && response.result.action != 'input.unknown'){
+						if(session.session_error && response.result.fulfillment.length != 0){
 							reducer(actions.REMOVE_ERROR_SESSION(session.session_hash), function(){
 								io.broadcastGetSessions();
 								io.broadcastGetSessionInfo(session.session_id);
 							});
-						} else if(!session.session_error && response.result.action == 'input.unknown'){
+						} else if(!session.session_error && response.result.fulfillment.length == 0){
 							reducer(actions.SET_ERROR_SESSION(session.session_hash), function(){
 								io.broadcastGetSessions();
 								io.broadcastGetSessionInfo(session.session_id);
 							});
 						}
 					});
-					if(response.result.fulfillment.speech){
-						telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
+					if(response.result.fulfillment.length != 0){
+						response.result.fulfillment.forEach(function(text){
+							telegram.sendMessage(message.chat.id, text.message);
+						});
 					}
 					io.broadcastGetSessionsDialog({session_hash: message.chat.id});
 					io.broadcastGetSessionInfo(connection.session_id);

@@ -12,7 +12,7 @@ var fs = require('fs'),
 	reducer = require('./reducer.js')(require('mysql').createConnection(env.mysql), require('./nodemailer/index.js')(require('nodemailer'), env)),
 	Events = require('./creators/index.js'),
 	telegram = new (require('node-telegram-bot-api'))(env.telegram.token, {polling: true}),
-	apiai = require('apiai')(env.apiai.token);
+	botengine = require('./botengine/index.js')(require('request'), env.botengine);
 app.use(helmet());
 telegram.connections = [];
 require("./ws/index.js")(
@@ -20,11 +20,11 @@ require("./ws/index.js")(
 	reducer, 
 	Events,
 	telegram,
-	apiai
+	botengine
 );
 require("./telegram/index.js")(
 	telegram,
-	apiai,
+	botengine,
 	reducer,
 	Events,
 	io
