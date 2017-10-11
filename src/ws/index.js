@@ -107,7 +107,7 @@ function broadcastGetDispatches(){
 		}
 	});
 }
-module.exports = function(io, reducer, actions, telegram, apiai, transporter){
+module.exports = function(io, reducer, actions, telegram, apiai){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -289,9 +289,22 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				io.broadcastGetSessionsDialog({session_id: data.session_id});
 				io.broadcastGetSessionInfo(data.session_id);
 				io.broadcastGetSessions();
-				if(data.hash.toString().length < 32){
-					telegram.sendMessage(data.hash, data.message);
-				}
+				reducer(actions.GET_SESSION_INFO(data.session_id), function(session_info){
+					session_info = session_info[0];
+					if(session_info.session_telegram){
+						var telegram_bot = session_info.session_partner ?
+								telegram.partner :
+								session_info.session_faq ?
+									telegram.faq :
+									session_info.session_sale ?
+										telegram.sale :
+										false;
+						if(telegram_bot != false){
+							var refactor_hash = data.hash.split("partner").join("").split("faq").join("").split("sale").join("");
+							telegram_bot.sendMessage(refactor_hash, data.message);
+						}
+					}
+				});
 			});
 			reducer(actions[Types.GET_SESSION_INFO](data.session_id), function(response){
 				response = response[0] || {};
@@ -337,13 +350,13 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 			if(!socket.token){
 				var random = [],
 					number = Math.ceil(Math.random()*2);
-				for(var i = 0; i < 32; i++){
+				for(var i = 0; i < 10; i++){
 					var symbol = (Math.random()*0xFFFFFF).toString(16)[0];
 					random.push(Math.ceil(Math.random()*2) == number ? symbol.toLowerCase() : symbol.toUpperCase());
 				}
 				socket.token = random.join("");
 			}
-			reducer(actions.SET_SESSION({hash:socket.token, type:"widget"}), function(response){
+			reducer(actions.SET_SESSION({hash:data.subject + socket.token, type:"widget", subject: data.subject}), function(response){
 				socket.emit("WIDGET_SET_TOKEN", socket.token);
 				io.broadcastGetSessions();
 			});
@@ -356,20 +369,54 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 				session_hash: data
 			};
 			reducer(actions.GET_SESSION_ID(data), function(response){
-				socket.emit(Types.GET_SESSION_ID, response);
-				socket.attributes.session_id = response[0].session_id;
-				reducer(actions.SET_ACTIVE({session_hash: data}), function(){
-					io.broadcastGetSessions();
-					io.broadcastGetSessionInfo(socket.attributes.session_id);
-				});
+				if(response.length == 0){
+					var refactor_subject = data.indexOf("partner") == 0 ?
+						"partner" :
+						data.indexOf("faq") == 0 ?
+							"faq" :
+							data.indexOf("sale") == 0 ?
+								"sale" :
+								false;
+					if(refactor_subject != false){
+						reducer(actions.SET_SESSION({
+							hash: data, 
+							type: "widget", 
+							subject: refactor_subject
+						}), function(){
+							reducer(actions.GET_SESSION_ID(data), function(responce){
+								socket.emit(Types.GET_SESSION_ID, responce);
+								socket.attributes.session_id = responce[0].session_id;
+								reducer(actions.SET_ACTIVE({session_hash: data}), function(){
+									io.broadcastGetSessions();
+									io.broadcastGetSessionInfo(socket.attributes.session_id);
+								});
+							});
+						});
+					}
+				} else {
+					socket.emit(Types.GET_SESSION_ID, response);
+					socket.attributes.session_id = response[0].session_id;
+					reducer(actions.SET_ACTIVE({session_hash: data}), function(){
+						io.broadcastGetSessions();
+						io.broadcastGetSessionInfo(socket.attributes.session_id);
+					});
+				}
 			});
 		});
 		socket.on("WIDGET_MESSAGE", function(data){
 			reducer(actions.SET_QUESTION({message: data, hash: socket.token}), function(response){
-				reducer(actions.GET_BOT_STATUS({session_hash: socket.token}), function(bot_status_response){
-					var bot_status = bot_status_response[0].bot_work;
+				reducer(actions.GET_SESSION_INFO(socket.attributes.session_id), function(session_info){
+					var bot_status = session_info[0].bot_work,
+						ai = session_info[0].session_partner ?
+							apiai.partner :
+							session_info[0].session_faq ?
+								apiai.faq :
+								session_info[0].session_sale ?
+									apiai.sale :
+									apiai.partner;
 					if(bot_status){
-						var request = apiai.textRequest(data, {sessionId: socket.token});
+						console.log(data, socket.token);
+						var request = ai.textRequest(data, {sessionId: socket.token});
 						request.on('response', function(response){
 							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
 							if(response.result.action == 'input.unknown'){
@@ -418,20 +465,37 @@ module.exports = function(io, reducer, actions, telegram, apiai, transporter){
 			reducer(actions[Types.GET_ALL_SESSIONS](), function(responce){
 				for(var i = 0; i < responce.length; i++){
 					var session = responce[i];
-					if(data.dispatch_telegram && session.session_hash.toString().length < 32){
+					if(data.dispatch_telegram && session.session_telegram){
 						reducer(actions[Types.SET_ANSWER]({
 							hash: session.session_hash, 
 							session_id: session.session_id, 
 							message: data.dispatch_message
 						}), (function(obj, response){
 							if(response){
-								telegram.sendMessage(obj.hash, obj.message);
-								io.broadcastGetSessionsDialog({session_id: obj.id});
-								io.broadcastGetSessionInfo(obj.id);
-								io.broadcastGetSessions();
+								var telegram_bot = obj.session_partner ?
+										telegram.partner :
+											obj.session_faq ?
+												telegram.faq :
+												obj.session_sale ?
+													telegram.sale :
+													false;
+								if(telegram_bot != false){
+									var refactor_hash = obj.hash.split("partner").join("").split("faq").join("").split("sale").join("");
+									telegram_bot.sendMessage(refactor_hash, obj.message);
+									io.broadcastGetSessionsDialog({session_id: obj.id});
+									io.broadcastGetSessionInfo(obj.id);
+									io.broadcastGetSessions();
+								}
 							}
-						}).bind(this, {hash: session.session_hash, message: data.dispatch_message, id: session.session_id}));
-					} else if (data.dispatch_widget && session.session_hash.toString().length == 32) {
+						}).bind(this, {
+							hash: session.session_hash, 
+							message: data.dispatch_message, 
+							id: session.session_id,
+							session_partner: session.session_partner,
+							session_faq: session.session_faq,
+							session_sale: session.session_sale
+						}));
+					} else if (data.dispatch_widget && session.session_widget) {
 						reducer(actions[Types.SET_ANSWER]({
 							hash: session.session_hash, 
 							session_id: session.session_id, 
