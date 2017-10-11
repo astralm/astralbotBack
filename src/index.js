@@ -11,25 +11,55 @@ var fs = require('fs'),
 	),
 	reducer = require('./reducer.js')(require('mysql').createConnection(env.mysql), require('./nodemailer/index.js')(require('nodemailer'), env)),
 	Events = require('./creators/index.js'),
-	telegram = new (require('node-telegram-bot-api'))(env.telegram.token, {polling: true}),
-	apiai = require('apiai')(env.apiai.token);
+	telegram_partner = new (require('node-telegram-bot-api'))(env.telegram.partner, {polling: true}),
+	telegram_sale = new (require('node-telegram-bot-api'))(env.telegram.sale, {polling: true}),
+	telegram_faq = new (require('node-telegram-bot-api'))(env.telegram.faq, {polling: true}),
+	apiai_partner = require('apiai')(env.apiai.partner),
+	apiai_faq = require('apiai')(env.apiai.faq),
+	apiai_sale = require('apiai')(env.apiai.sale);
 app.use(helmet());
-telegram.connections = [];
+telegram_partner.connections = [];
+telegram_sale.connections = [];
+telegram_faq.connections = [];
 require("./ws/index.js")(
 	io, 
 	reducer, 
 	Events,
-	telegram,
-	apiai
+	{
+		partner: telegram_partner,
+		sale: telegram_sale,
+		faq: telegram_faq
+	},
+	{
+		partner: apiai_partner,
+		sale: apiai_sale,
+		faq: apiai_faq
+	}
 );
 require("./telegram/index.js")(
-	telegram,
-	apiai,
+	telegram_partner,
+	apiai_partner,
 	reducer,
 	Events,
-	io
+	io,
+	"partner"
 );
-
+require("./telegram/index.js")(
+	telegram_faq,
+	apiai_faq,
+	reducer,
+	Events,
+	io,
+	"faq"
+);
+require("./telegram/index.js")(
+	telegram_sale,
+	apiai_sale,
+	reducer,
+	Events,
+	io,
+	"sale"
+);
 
 
 
