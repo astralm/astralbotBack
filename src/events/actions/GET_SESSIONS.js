@@ -109,7 +109,6 @@ module.exports = function(data, callback){
 		}
 	}
 	sql += "LIMIT 50 OFFSET "+data.offset;
-	console.log(sql);
 	this.mysql.query({
 		sql: sql,
 		timeout: 1000
