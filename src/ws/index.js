@@ -496,48 +496,54 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			reducer(actions[Types.GET_ALL_SESSIONS](), function(responce){
 				for(var i = 0; i < responce.length; i++){
 					var session = responce[i];
-					if(data.dispatch_telegram && session.session_telegram){
-						reducer(actions[Types.SET_ANSWER]({
-							hash: session.session_hash, 
-							session_id: session.session_id, 
-							message: data.dispatch_message
-						}), (function(obj, response){
-							if(response){
-								var telegram_bot = obj.session_partner ?
-										telegram.partner :
-											obj.session_faq ?
-												telegram.faq :
-												obj.session_sale ?
-													telegram.sale :
-													false;
-								if(telegram_bot != false){
-									var refactor_hash = obj.hash.split("partner").join("").split("faq").join("").split("sale").join("");
-									telegram_bot.sendMessage(refactor_hash, obj.message);
+					if((session.session_partner && data.dispatch_partner) || (session.session_faq && data.dispatch_faq) || (session.session_sale && data.dispatch_sale)){
+						if(data.dispatch_telegram && session.session_telegram){
+							reducer(actions[Types.SET_ANSWER]({
+								hash: session.session_hash, 
+								session_id: session.session_id, 
+								message: data.dispatch_message
+							}), (function(obj, response){
+								if(response){
+									var telegram_bot = obj.session_partner ?
+											telegram.partner :
+												obj.session_faq ?
+													telegram.faq :
+													obj.session_sale ?
+														telegram.sale :
+														false;
+									if(telegram_bot != false){
+										var refactor_hash = obj.hash.split("partner").join("").split("faq").join("").split("sale").join("");
+										telegram_bot.sendMessage(refactor_hash, obj.message);
+										io.broadcastGetSessionsDialog({session_id: obj.id});
+										io.broadcastGetSessionInfo(obj.id);
+										io.broadcastGetSessions();
+									}
+								}
+							}).bind(this, {
+								hash: session.session_hash, 
+								message: data.dispatch_message, 
+								id: session.session_id,
+								session_partner: session.session_partner,
+								session_faq: session.session_faq,
+								session_sale: session.session_sale
+							}));
+						} else if (data.dispatch_widget && session.session_widget) {
+							reducer(actions[Types.SET_ANSWER]({
+								hash: session.session_hash, 
+								session_id: session.session_id, 
+								message: data.dispatch_message
+							}), (function(obj, response){
+								if(response){
 									io.broadcastGetSessionsDialog({session_id: obj.id});
 									io.broadcastGetSessionInfo(obj.id);
 									io.broadcastGetSessions();
 								}
-							}
-						}).bind(this, {
-							hash: session.session_hash, 
-							message: data.dispatch_message, 
-							id: session.session_id,
-							session_partner: session.session_partner,
-							session_faq: session.session_faq,
-							session_sale: session.session_sale
-						}));
-					} else if (data.dispatch_widget && session.session_widget) {
-						reducer(actions[Types.SET_ANSWER]({
-							hash: session.session_hash, 
-							session_id: session.session_id, 
-							message: data.dispatch_message
-						}), (function(obj, response){
-							if(response){
-								io.broadcastGetSessionsDialog({session_id: obj.id});
-								io.broadcastGetSessionInfo(obj.id);
-								io.broadcastGetSessions();
-							}
-						}).bind(this, {hash: session.session_hash, message: data.dispatch_message, id: session.session_id}))
+							}).bind(this, {
+								hash: session.session_hash, 
+								message: data.dispatch_message, 
+								id: session.session_id
+							}));
+						}
 					}
 				}
 				reducer(actions[Types.NEW_DISPATCH](data), function(response){
