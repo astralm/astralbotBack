@@ -25,19 +25,25 @@ function broadcastGetSessions(){
 				filters = attributes ? attributes.filters.sort().join(",") : "",
 				order = attributes ? attributes.order : {name: "session_id", desc: true},
 				offset = attributes ? +attributes.offset : 0,
-				user_id = attributes ? +attributes.user_id : 0;
+				user_id = attributes ? +attributes.user_id : 0,
+				firstDate = attributes ? attributes.firstDate : null,
+				secondDate = attributes ? attributes.secondDate : null;
 			if(options.length > 0){
 				for (var i = 0; i < options.length; i++){
 					var option = options[i],
 						_filters = option.filters.sort().join(","),
 						_order = option.order,
-						_offset = option.offset;
-					if(_filters != filters || _order.name != order.name || _order.desc != order.desc || _offset != offset){
+						_offset = option.offset,
+						_firstDate = option.firstDate,
+						_secondDate = option.secondDate;
+					if(_filters != filters || _order.name != order.name || _order.desc != order.desc || _offset != offset || _firstDate != firstDate || _secondDate != secondDate){
 						options.push({
 							filters: filters ? socket.attributes.filters : [],
 							order: order,
 							offset: offset,
-							objects: [socket]
+							objects: [socket],
+							firstDate: firstDate,
+							secondDate: secondDate
 						});
 					} else {
 						option.objects.push(socket);
@@ -48,6 +54,8 @@ function broadcastGetSessions(){
 					filters: filters ? socket.attributes.filters : [],
 					order: order,
 					offset: offset,
+					firstDate: firstDate,
+					secondDate: secondDate,
 					objects: [socket]
 				});
 			}
@@ -63,7 +71,9 @@ function broadcastGetSessions(){
 						filters: option.filters,
 						order: option.order,
 						offset: option.offset,
-						user_id: user_id
+						user_id: user_id,
+						firstDate: option.firstDate,
+						secondDate: option.secondDate
 					}), (function(key, object, response){
 						if(object.objects[key]){
 							object.objects[key].emit(Types.GET_SESSIONS, response);
@@ -74,7 +84,9 @@ function broadcastGetSessions(){
 				this.reducer(this.actions[Types.GET_SESSIONS]({
 					filters: option.filters,
 					order: option.order,
-					offset: option.offset
+					offset: option.offset,
+					firstDate: option.firstDate,
+					secondDate: option.secondDate
 				}), (function(object, response){
 					for(var j = 0; j < object.objects.length; j++){
 						if(object.objects[j]){
@@ -171,7 +183,9 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 					name: data.order.name,
 					desc: data.order.desc
 				},
-				user_id: socket.user_id
+				user_id: socket.user_id,
+				firstDate: data.firstDate,
+				secondDate: data.secondDate
 			};
 			data.user_id = socket.user_id;
 			reducer(actions.GET_SESSIONS(data), function(response){
@@ -187,6 +201,8 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			}
 			socket.attributes.offset = data.offset;
 			socket.attributes.order = data.order;
+			socket.attributes.firstDate = data.firstDate;
+			socket.attributes.secondDate = data.secondDate;
 			var key = socket.attributes.filters.indexOf(data.filter);
 			if(data.filter){
 				if(data.filter != "all"){
@@ -224,6 +240,21 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 						case 'telegram':
 						case 'widget':
 							var filterKey = socket.attributes.filters.indexOf(data.filter == 'telegram' ? 'widget' : 'telegram');
+							break;
+						case 'today':
+						case 'yesterday':
+						case 'date':
+							var filterKey = [];
+							if(data.filter == "today"){
+								filterKey.push(socket.attributes.filters.indexOf("yesterday"));
+								filterKey.push(socket.attributes.filters.indexOf("date"));
+							} else if (data.filter == "yesterday"){
+								filterKey.push(socket.attributes.filters.indexOf("today"));
+								filterKey.push(socket.attributes.filters.indexOf("date"));
+							} else if (data.filter == "date"){
+								filterKey.push(socket.attributes.filters.indexOf("yesterday"));
+								filterKey.push(socket.attributes.filters.indexOf("today"));
+							}
 							break;
 					}
 					if(typeof filterKey != "object" && filterKey > -1){
