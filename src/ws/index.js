@@ -187,6 +187,8 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			}
 			socket.attributes.offset = data.offset;
 			socket.attributes.order = data.order;
+			socket.attributes.firstDate = data.firstDate;
+			socket.attributes.secondDate = data.secondDate;
 			var key = socket.attributes.filters.indexOf(data.filter);
 			if(data.filter){
 				if(data.filter != "all"){
@@ -224,6 +226,21 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 						case 'telegram':
 						case 'widget':
 							var filterKey = socket.attributes.filters.indexOf(data.filter == 'telegram' ? 'widget' : 'telegram');
+							break;
+						case 'today':
+						case 'yesterday':
+						case 'date':
+							var filterKey = [];
+							if(data.filter == "today"){
+								filterKey.push(socket.attributes.filters.indexOf("yesterday"));
+								filterKey.push(socket.attributes.filters.indexOf("date"));
+							} else if (data.filter == "yesterday"){
+								filterKey.push(socket.attributes.filters.indexOf("today"));
+								filterKey.push(socket.attributes.filters.indexOf("date"));
+							} else if (data.filter == "date"){
+								filterKey.push(socket.attributes.filters.indexOf("yesterday"));
+								filterKey.push(socket.attributes.filters.indexOf("today"));
+							}
 							break;
 					}
 					if(typeof filterKey != "object" && filterKey > -1){
