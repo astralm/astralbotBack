@@ -13,4 +13,11 @@ module.exports = function(data, callback){
 				callback(data || null);
 		}
 	});
+	this.mysql.query({
+		sql: 'UPDATE `sessions` SET `session_dialog_update_date`=DATE_FORMAT(NOW(), \'%Y-%d-%m %H:%i:%s\') WHERE `session_hash`=?',
+		timeout: 1000,
+		values: [
+			data.hash
+		]
+	});
 }
