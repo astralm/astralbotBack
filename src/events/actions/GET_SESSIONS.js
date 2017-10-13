@@ -80,10 +80,19 @@ module.exports = function(data, callback){
 						value: "1"
 					});
 					break;
+				case "date":
+				case "today":
+				case "yesterday":
+					result.push({
+						name: "session_dialog_update_date",
+						value: '"' + data.firstDate + '"' + " AND " + '"' + data.secondDate + '"',
+						symbol: " BETWEEN "
+					});
+					break;
 			}
 		}
 	}
-	var sql = "SELECT * FROM `sessions_info_view`";
+	var sql = "SELECT *, DATE_FORMAT(`session_dialog_update_date`, \'%Y-%d-%m %H:%i:%s\') as `session_dialog_update_date_formated` FROM `sessions_info_view`";
 	if(result.length > 0){
 		sql += " WHERE ";
 		var _result = [];
@@ -100,6 +109,7 @@ module.exports = function(data, callback){
 		}
 	}
 	sql += "LIMIT 50 OFFSET "+data.offset;
+	console.log(sql);
 	this.mysql.query({
 		sql: sql,
 		timeout: 1000
