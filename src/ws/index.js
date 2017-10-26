@@ -446,7 +446,6 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 									apiai.sale :
 									apiai.partner;
 					if(bot_status){
-						console.log(data, socket.token);
 						var request = ai.textRequest(data, {sessionId: socket.token});
 						request.on('response', function(response){
 							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
@@ -468,6 +467,16 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 					io.broadcastGetSessionsDialog({session_hash: socket.token});
 					io.broadcastGetSessions();
 				});
+			});
+		});
+		socket.on("WIDGET_CLIENT_INFO", function(data){
+			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data), function(){
+
+			});
+		});
+		socket.on("WIDGET_SET_CLIENT", function(data){
+			reducer(actions[Types.SET_CLIENT](data), function(){
+
 			});
 		});
 		socket.on(Types.REMOVE_ERROR_SESSION, function(data){
