@@ -1,6 +1,6 @@
 module.exports = function(data, callback){
 	var result = Object.keys(data).filter(function(data_item){
-		return data_item != "session_id";
+		return data_item != "session_id" && data_item != "client_id";
 	}).map(function(key){
 		return key;
 	});
@@ -10,7 +10,7 @@ module.exports = function(data, callback){
 		}).join(", ") + "WHERE `session_id`=?",
 		timeout: 1000,
 		values: Object.keys(data).filter(function(data_item){
-			return data_item != "session_id";
+			return data_item != "session_id" && data_item != "client_id";
 		}).map(function(item){
 			return data[item];
 		}).concat(data.session_id)
