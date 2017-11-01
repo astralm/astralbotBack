@@ -119,12 +119,36 @@ function broadcastGetDispatches(){
 		}
 	});
 }
+function broadcastGetClient(client_id){
+	var _this = this;
+	this.reducer(this.actions[Types.GET_CLIENT](client_id), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_CLIENT && socket.client_id == client_id){
+				socket.emit(Types.GET_CLIENT, response);
+			}
+		}
+	});
+}
+function broadcastGetClients(){
+	var _this = this;
+	this.reducer(this.actions[Types.GET_CLIENTS](), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_CLIENTS){
+				socket.emit(Types.GET_CLIENTS, response);
+			}
+		}
+	});
+}
 module.exports = function(io, reducer, actions, telegram, apiai){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
 	io.broadcastGetSessionsDialog = broadcastGetSessionsDialog.bind({reducer, actions, io});
 	io.broadcastGetDispatches = broadcastGetDispatches.bind({reducer, actions, io});
+	io.broadcastGetClient = broadcastGetClient.bind({reducer, actions, io});
+	io.broadcastGetClients = broadcastGetClients.bind({reducer, actions, io});
 	io.on('connection', function(socket){
 		socket.bot = true;
 		socket.on(Types.LOGIN, function(data){
@@ -471,12 +495,16 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on("WIDGET_CLIENT_INFO", function(data){
 			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data), function(){
-
+				io.broadcastGetClients();
+				reducer(actions[Types.GET_CLIENT_ID](data.session_id), function(responce){
+					io.broadcastGetClient(responce[0].client_id);
+				});
 			});
 		});
 		socket.on("WIDGET_SET_CLIENT", function(data){
 			reducer(actions[Types.SET_CLIENT](data), function(){
-
+				io.broadcastGetClients();
+				io.broadcastGetSessions();
 			});
 		});
 		socket.on(Types.REMOVE_ERROR_SESSION, function(data){
@@ -557,6 +585,28 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 				}
 				reducer(actions[Types.NEW_DISPATCH](data), function(response){
 					io.broadcastGetDispatches();
+				});
+			});
+		});
+		socket.on(Types.GET_CLIENTS, function(data){
+			socket.switch = Types.GET_CLIENTS;
+			reducer(actions[Types.GET_CLIENTS](data), function(response){
+				socket.emit(Types.GET_CLIENTS, response);
+			});
+		});
+		socket.on(Types.GET_CLIENT, function(data){
+			socket.switch = Types.GET_CLIENT;
+			socket.client_id = data;
+			reducer(actions[Types.GET_CLIENT](data), function(response){
+				socket.emit(Types.GET_CLIENT, response);
+			});
+		});
+		socket.on(Types.UPDATE_CLIENT_INFORMATION, function(data){
+			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data), function(responce){
+				reducer(actions[Types.GET_CLIENT](data.client_id), function(response){
+					socket.emit(Types.GET_CLIENT, response);
+					io.broadcastGetClients();
+					io.broadcastGetClient(data.client_id);
 				});
 			});
 		});
