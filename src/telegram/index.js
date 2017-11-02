@@ -8,6 +8,15 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 			reducer(actions.SET_SESSION({hash: subject + message.chat.id, type:"telegram", subject: subject}));
 			reducer(actions.GET_SESSION_ID(subject + message.chat.id), function(response){
 				connection.session_id = response[0].session_id;
+				reducer(actions.SET_CLIENT({
+					client_name: message.from.first_name + " " + message.from.last_name,
+					client_username: message.from.username,
+					session_id: connection.session_id
+				}), function(responce){
+					io.broadcastGetClients();
+					io.broadcastGetSessions();
+					io.broadcastGetSessionInfo(connection.session_id);
+				});
 			});
 		}
 		if(!connection.active){
