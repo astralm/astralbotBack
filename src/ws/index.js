@@ -150,6 +150,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 	io.broadcastGetClient = broadcastGetClient.bind({reducer, actions, io});
 	io.broadcastGetClients = broadcastGetClients.bind({reducer, actions, io});
 	io.on('connection', function(socket){
+		socket.attributes = {};
 		socket.bot = true;
 		socket.on(Types.LOGIN, function(data){
 			socket.email = data.email;
@@ -200,17 +201,15 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on(Types.GET_SESSIONS, function(data){
 			socket.switch = Types.GET_SESSIONS;
-			socket.attributes = {
-				offset: data.offset,
-				filters: Array.apply(this, data.filters),
-				order: {
-					name: data.order.name,
-					desc: data.order.desc
-				},
-				user_id: socket.user_id,
-				firstDate: data.firstDate,
-				secondDate: data.secondDate
+			socket.attributes.offset = data.offset;
+			socket.attributes.filters = Array.apply(this, data.filters);
+			socket.attributes.order = {
+				name: data.order.name,
+				desc: data.order.desc
 			};
+			socket.attributes.user_id = socket.user_id;
+			socket.attributes.firstDate = data.firstDate;
+			socket.attributes.secondDate = data.secondDate;
 			data.user_id = socket.user_id;
 			reducer(actions.GET_SESSIONS(data), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
@@ -322,18 +321,14 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		});
 		socket.on(Types.GET_SESSION_INFO, function(data){
 			socket.switch = Types.GET_SESSION_INFO;
-			socket.attributes = {
-				session_id: data
-			};
+			socket.attributes.session_id = data;
 			reducer(actions.GET_SESSION_INFO(data), function(response){
 				socket.emit(Types.GET_SESSION_INFO, response);
 			});
 		});
 		socket.on(Types.GET_SESSION_DIALOG, function(data){
 			socket.switch = Types.GET_SESSION_DIALOG;
-			socket.attributes = {
-				session_id: data
-			};
+			socket.attributes.session_id = data;
 			reducer(actions.GET_SESSION_DIALOG({session_id: data}), function(response){
 				socket.emit(Types.GET_SESSION_DIALOG, response);
 				socket.attributes.session_hash = (response ? response[0] ? response[0].session_hash : null : null);
@@ -420,9 +415,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			socket.token = data;
 			socket.type = "widget";
 			socket.switch = Types.GET_SESSION_DIALOG;
-			socket.attributes = {
-				session_hash: data
-			};
+			socket.attributes.session_hash = data;
 			reducer(actions.GET_SESSION_ID(data), function(response){
 				if(response.length == 0){
 					var refactor_subject = data.indexOf("partner") == 0 ?
@@ -496,6 +489,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 		socket.on("WIDGET_CLIENT_INFO", function(data){
 			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data), function(){
 				io.broadcastGetClients();
+				io.broadcastGetSessionInfo(socket.attributes.session_id);
 				reducer(actions[Types.GET_CLIENT_ID](data.session_id), function(responce){
 					io.broadcastGetClient(responce[0].client_id);
 				});
@@ -505,6 +499,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			reducer(actions[Types.SET_CLIENT](data), function(){
 				io.broadcastGetClients();
 				io.broadcastGetSessions();
+				io.broadcastGetSessionInfo(socket.attributes.session_id);
 			});
 		});
 		socket.on(Types.REMOVE_ERROR_SESSION, function(data){
@@ -607,6 +602,7 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 					socket.emit(Types.GET_CLIENT, response);
 					io.broadcastGetClients();
 					io.broadcastGetClient(data.client_id);
+					io.broadcastGetSessionInfo(data.session_id);
 				});
 			});
 		});
