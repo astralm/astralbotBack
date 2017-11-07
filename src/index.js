@@ -16,7 +16,8 @@ var fs = require('fs'),
 	telegram_faq = new (require('node-telegram-bot-api'))(env.telegram.faq, {polling: true}),
 	apiai_partner = require('apiai')(env.apiai.partner),
 	apiai_faq = require('apiai')(env.apiai.faq),
-	apiai_sale = require('apiai')(env.apiai.sale);
+	apiai_sale = require('apiai')(env.apiai.sale),
+	ua = require('ua-parser-js');
 app.use(helmet());
 telegram_partner.connections = [];
 telegram_sale.connections = [];
@@ -25,6 +26,7 @@ require("./ws/index.js")(
 	io, 
 	reducer, 
 	Events,
+	ua,
 	{
 		partner: telegram_partner,
 		sale: telegram_sale,
