@@ -141,7 +141,7 @@ function broadcastGetClients(){
 		}
 	});
 }
-module.exports = function(io, reducer, actions, telegram, apiai){
+module.exports = function(io, reducer, actions, ua, telegram, apiai){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -496,6 +496,19 @@ module.exports = function(io, reducer, actions, telegram, apiai){
 			});
 		});
 		socket.on("WIDGET_SET_CLIENT", function(data){
+			data.client_ip = socket.handshake.address;
+			data.client_url = socket.handshake.headers.origin;
+			var client_ua = ua(socket.handshake.headers["user-agent"]);
+			data.client_ua = socket.handshake.headers["user-agent"];
+			data.client_browser_name = client_ua.browser.name;
+			data.client_browser_version = client_ua.browser.version;
+			data.client_engine_name = client_ua.engine.name;
+			data.client_engine_version = client_ua.engine.version;
+			data.client_os_name = client_ua.os.name;
+			data.client_os_version = client_ua.os.version;
+			data.client_device_vendor = client_ua.device.vendor;
+			data.client_device_model = client_ua.device.model;
+			data.client_device_type = client_ua.device.type;
 			reducer(actions[Types.SET_CLIENT](data), function(){
 				io.broadcastGetClients();
 				io.broadcastGetSessions();
