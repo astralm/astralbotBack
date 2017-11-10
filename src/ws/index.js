@@ -1,8 +1,13 @@
 var Types = require("../constants/eventTypes.js");
-function broadcastGetUsers(){
+function broadcastGetUsers(organization_id){
 	var _this = this;
-	_this.reducer(_this.actions.GET_USERS(), function(response){
-		_this.io.sockets.emit(Types.GET_USERS, response);
+	_this.reducer(_this.actions.GET_USERS(organization_id), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_USERS && socket.organization_id == organization_id){
+				socket.emit(Types.GET_USERS, response);
+			}
+		}
 	});
 }
 function broadcastGetSessionInfo(session_id){
@@ -15,12 +20,12 @@ function broadcastGetSessionInfo(session_id){
 		}
 	});
 }
-function broadcastGetSessions(){
+function broadcastGetSessions(organization_id){
 	var sockets = this.io.sockets.sockets,
 		options = [];
 	for (var key in sockets){
 		var socket = sockets[key];
-		if(socket.switch == Types.GET_SESSIONS){
+		if(socket.switch == Types.GET_SESSIONS && socket.organization_id == organization_id){
 			var attributes = socket.hasOwnProperty("attributes") ? socket.attributes : false,
 				filters = attributes ? attributes.filters.sort().join(",") : "",
 				order = attributes ? attributes.order : {name: "session_id", desc: true},
@@ -73,7 +78,8 @@ function broadcastGetSessions(){
 						offset: option.offset,
 						user_id: user_id,
 						firstDate: option.firstDate,
-						secondDate: option.secondDate
+						secondDate: option.secondDate,
+						organization_id: organization_id
 					}), (function(key, object, response){
 						if(object.objects[key]){
 							object.objects[key].emit(Types.GET_SESSIONS, response);
@@ -86,7 +92,8 @@ function broadcastGetSessions(){
 					order: option.order,
 					offset: option.offset,
 					firstDate: option.firstDate,
-					secondDate: option.secondDate
+					secondDate: option.secondDate,
+					organization_id: organization_id
 				}), (function(object, response){
 					for(var j = 0; j < object.objects.length; j++){
 						if(object.objects[j]){
@@ -108,12 +115,12 @@ function broadcastGetSessionsDialog(data){
 		}
 	});
 }
-function broadcastGetDispatches(){
+function broadcastGetDispatches(organization_id){
 	var _this = this;
-	this.reducer(this.actions[Types.GET_DISPATCHES](), function(response){
+	this.reducer(this.actions[Types.GET_DISPATCHES](organization_id), function(response){
 		for(var socketKey in _this.io.sockets.sockets){
 			var socket = _this.io.sockets.sockets[socketKey];
-			if(socket.switch == Types.GET_DISPATCHES){
+			if(socket.switch == Types.GET_DISPATCHES && socket.organization_id == organization_id){
 				socket.emit(Types.GET_DISPATCHES, response);
 			}
 		}
@@ -130,13 +137,35 @@ function broadcastGetClient(client_id){
 		}
 	});
 }
-function broadcastGetClients(){
+function broadcastGetClients(organization_id){
 	var _this = this;
-	this.reducer(this.actions[Types.GET_CLIENTS](), function(response){
+	this.reducer(this.actions[Types.GET_CLIENTS](organization_id), function(response){
 		for(var socketKey in _this.io.sockets.sockets){
 			var socket = _this.io.sockets.sockets[socketKey];
-			if(socket.switch == Types.GET_CLIENTS){
+			if(socket.switch == Types.GET_CLIENTS && socket.organization_id == organization_id){
 				socket.emit(Types.GET_CLIENTS, response);
+			}
+		}
+	});
+}
+function broadcastGetOrganizations(){
+	var _this = this;
+	this.reducer(this.actions[Types.GET_ORGANIZATIONS](), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_ORGANIZATIONS){
+				socket.emit(Types.GET_ORGANIZATIONS, response);
+			}
+		}
+	});
+}
+function broadcastGetOrganization(organization_id){
+	var _this = this;
+	this.reducer(this.actions[Types.GET_ORGANIZATION](organization_id), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_ORGANIZATION && socket.organization_id == organization_id){
+				socket.emit(Types.GET_ORGANIZATION, response);
 			}
 		}
 	});
@@ -149,33 +178,40 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 	io.broadcastGetDispatches = broadcastGetDispatches.bind({reducer, actions, io});
 	io.broadcastGetClient = broadcastGetClient.bind({reducer, actions, io});
 	io.broadcastGetClients = broadcastGetClients.bind({reducer, actions, io});
+	io.broadcastGetOrganizations = broadcastGetOrganizations.bind({reducer, actions, io});
+	io.broadcastGetOrganization = broadcastGetOrganization.bind({reducer, actions, io});
 	io.on('connection', function(socket){
 		socket.attributes = {};
 		socket.bot = true;
 		socket.on(Types.LOGIN, function(data){
 			socket.email = data.email;
 			socket.switch = "";
-			reducer(actions.LOGIN(data), function(response){
-				socket.emit(Types.LOGIN, response);
-				if(response){
+			reducer(actions.LOGIN(data), function(responce){
+				if(responce){
 					reducer(actions.UPDATE_USER(socket.email), function(response){
 						if(response && response[0]){
 							socket.user_id = response[0].user_id;
+							socket.organization_id = response[0].organization_id;
+							socket.email = response[0].user_email;
 						}
 						socket.emit(Types.UPDATE_USER, response);
+						socket.emit(Types.LOGIN, responce);
+						io.broadcastGetUsers(socket.organization_id);
+						reducer(actions[Types.GET_ORGANIZATION](response[0].organization_id), function(responce){
+							socket.emit(Types.GET_USER_ORGANIZATION, responce[0]);
+						});
 					});
-					io.broadcastGetUsers();
 				}
 			});
 		});
 		socket.on('disconnect', function(){
 			if(socket.email){
 				reducer(actions.LOGOUT({email: socket.email}));
-				io.broadcastGetUsers();
+				io.broadcastGetUsers(socket.organization_id);
 			}
 			if(socket.type == "widget"){
 				reducer(actions.SET_INACTIVE({session_hash: socket.attributes.session_hash || socket.token, session_id: socket.attributes.session_id}), function(){
-					io.broadcastGetSessions();
+					io.broadcastGetSessions(socket.organization_id);
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 				});
 			}
@@ -185,18 +221,18 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			reducer(actions.LOGOUT({email: socket.email}), function(response){
 				socket.emit(Types.LOGOUT, response);
 			});
-			io.broadcastGetUsers();
+			io.broadcastGetUsers(socket.organization_id);
 		});
-		socket.on(Types.GET_USERS, function(){
-			socket.switch = "";
-			reducer(actions.GET_USERS(), function(response){
+		socket.on(Types.GET_USERS, function(data){
+			socket.switch = Types.GET_USERS;
+			reducer(actions.GET_USERS(data), function(response){
 				socket.emit(Types.GET_USERS, response);
-			})
+			});
 		});
 		socket.on(Types.SET_USER, function(data){
 			socket.switch = "";
 			reducer(actions.SET_USER(data), function(){
-				io.broadcastGetUsers();
+				io.broadcastGetUsers(socket.organization_id);
 			})
 		});
 		socket.on(Types.GET_SESSIONS, function(data){
@@ -210,7 +246,10 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			socket.attributes.user_id = socket.user_id;
 			socket.attributes.firstDate = data.firstDate;
 			socket.attributes.secondDate = data.secondDate;
-			data.user_id = socket.user_id;
+			socket.attributes.organization_id = data.organization_id;
+			socket.organization_id = data.organization_id;
+			if(!data.user_id)
+				data.user_id = socket.user_id;
 			reducer(actions.GET_SESSIONS(data), function(response){
 				socket.emit(Types.GET_SESSIONS, response);
 			});
@@ -219,13 +258,15 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			if(!socket.hasOwnProperty("attributes")){
 				socket.attributes = {
 					filters: [],
-					user_id: socket.user_id
+					user_id: socket.user_id || data.user_id
 				};
 			}
 			socket.attributes.offset = data.offset;
 			socket.attributes.order = data.order;
 			socket.attributes.firstDate = data.firstDate;
 			socket.attributes.secondDate = data.secondDate;
+			if(!socket.attributes.user_id)
+				socket.attributes.user_id = data.user_id;
 			var key = socket.attributes.filters.indexOf(data.filter);
 			if(data.filter){
 				if(data.filter != "all"){
@@ -279,6 +320,10 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 								filterKey.push(socket.attributes.filters.indexOf("today"));
 							}
 							break;
+						case 'empty':
+						case 'employed':
+							var filterKey = socket.attributes.filters.indexOf(data.filter == 'empty' ? 'employed' : 'empty');
+							break;
 					}
 					if(typeof filterKey != "object" && filterKey > -1){
 						socket.attributes.filters.splice(filterKey, 1);
@@ -303,14 +348,22 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			});
 		});
 		socket.on(Types.BIND_SESSION, function(data){
+			if(!socket.organization_id)
+				socket.organization_id = data.organization_id;
+			if(!socket.attributes.user_id)
+				socket.attributes.user_id = data.user_id;
 			reducer(actions.BIND_SESSION(data), function(response){
-				io.broadcastGetSessions();
+				io.broadcastGetSessions(socket.organization_id);
 				io.broadcastGetSessionInfo(data.session_id);
 			});
 		});
 		socket.on(Types.UNBIND_SESSION, function(data){
+			if(!socket.organization_id)
+				socket.organization_id = data.organization_id;
+			if(!socket.attributes.user_id)
+				socket.attributes.user_id = data.user_id;
 			reducer(actions.UNBIND_SESSION(data), function(response){
-				io.broadcastGetSessions();
+				io.broadcastGetSessions(socket.organization_id);
 				io.broadcastGetSessionInfo(data.session_id);
 				reducer(actions[Types.START_BOT](data.session_id), function(){
 					reducer(actions.GET_BOT_STATUS({session_id: data.session_id}), function(status){
@@ -338,7 +391,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			reducer(actions.SET_ANSWER(data), function(response){
 				io.broadcastGetSessionsDialog({session_id: data.session_id});
 				io.broadcastGetSessionInfo(data.session_id);
-				io.broadcastGetSessions();
+				io.broadcastGetSessions(socket.organization_id);
 				reducer(actions.GET_SESSION_INFO(data.session_id), function(session_info){
 					session_info = session_info[0];
 					if(session_info.session_telegram){
@@ -361,7 +414,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 				if(response.session_error){
 					reducer(actions[Types.REMOVE_ERROR_SESSION](response.session_hash), function(){
 						io.broadcastGetSessionInfo(response.session_id);
-						io.broadcastGetSessions();
+						io.broadcastGetSessions(socket.organization_id);
 					});
 				}
 			});
@@ -390,13 +443,17 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			reducer(actions.UPDATE_USER_INFORMATION(data), function(response){
 				reducer(actions.GET_USER(data.email != null && data.email != '' ? data.email : socket.email), function(response){
 					socket.emit(Types.UPDATE_USER, response);
-					io.broadcastGetUsers();
-					io.broadcastGetSessions();
+					if(response && response[0]){
+						socket.email = response[0].user_email;
+					}
+					io.broadcastGetUsers(socket.organization_id);
+					io.broadcastGetSessions(socket.organization_id);
 				});
 			});
 		});
 		socket.on("WIDGET_GET_TOKEN", function(data){
 			socket.type = "widget";
+			socket.organization_id = data.organization_id;
 			if(!socket.token){
 				var random = [],
 					number = Math.ceil(Math.random()*2);
@@ -406,36 +463,37 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 				}
 				socket.token = random.join("");
 			}
-			reducer(actions.SET_SESSION({hash:data.subject + socket.token, type:"widget", subject: data.subject}), function(response){
+			reducer(actions.SET_SESSION({hash:data.subject + socket.token, type:"widget", subject: data.subject, organization_id: data.organization_id}), function(response){
 				socket.emit("WIDGET_SET_TOKEN", socket.token);
-				io.broadcastGetSessions();
+				io.broadcastGetSessions(data.organization_id);
 			});
 		});
 		socket.on(Types.GET_SESSION_ID, function(data){
-			socket.token = data;
+			socket.token = data.token;
 			socket.type = "widget";
 			socket.switch = Types.GET_SESSION_DIALOG;
-			socket.attributes.session_hash = data;
-			reducer(actions.GET_SESSION_ID(data), function(response){
+			socket.attributes.session_hash = data.token;
+			socket.organization_id = data.organization_id;
+			reducer(actions.GET_SESSION_ID(data.token), function(response){
 				if(response.length == 0){
-					var refactor_subject = data.indexOf("partner") == 0 ?
+					var refactor_subject = data.token.indexOf("partner") == 0 ?
 						"partner" :
-						data.indexOf("faq") == 0 ?
+						data.token.indexOf("faq") == 0 ?
 							"faq" :
-							data.indexOf("sale") == 0 ?
+							data.token.indexOf("sale") == 0 ?
 								"sale" :
 								false;
 					if(refactor_subject != false){
 						reducer(actions.SET_SESSION({
-							hash: data, 
+							hash: data.token, 
 							type: "widget", 
 							subject: refactor_subject
 						}), function(){
-							reducer(actions.GET_SESSION_ID(data), function(responce){
+							reducer(actions.GET_SESSION_ID(data.token), function(responce){
 								socket.emit(Types.GET_SESSION_ID, responce);
 								socket.attributes.session_id = responce[0].session_id;
-								reducer(actions.SET_ACTIVE({session_hash: data}), function(){
-									io.broadcastGetSessions();
+								reducer(actions.SET_ACTIVE({session_hash: data.token}), function(){
+									io.broadcastGetSessions(data.organization_id);
 									io.broadcastGetSessionInfo(socket.attributes.session_id);
 								});
 							});
@@ -444,15 +502,15 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 				} else {
 					socket.emit(Types.GET_SESSION_ID, response);
 					socket.attributes.session_id = response[0].session_id;
-					reducer(actions.SET_ACTIVE({session_hash: data}), function(){
-						io.broadcastGetSessions();
+					reducer(actions.SET_ACTIVE({session_hash: data.token}), function(){
+						io.broadcastGetSessions(data.organization_id);
 						io.broadcastGetSessionInfo(socket.attributes.session_id);
 					});
 				}
 			});
 		});
 		socket.on("WIDGET_MESSAGE", function(data){
-			reducer(actions.SET_QUESTION({message: data, hash: socket.token}), function(response){
+			reducer(actions.SET_QUESTION({message: data.message, hash: socket.token}), function(response){
 				reducer(actions.GET_SESSION_INFO(socket.attributes.session_id), function(session_info){
 					var bot_status = session_info[0].bot_work,
 						ai = session_info[0].session_partner ?
@@ -463,7 +521,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 									apiai.sale :
 									apiai.partner;
 					if(bot_status){
-						var request = ai.textRequest(data, {sessionId: socket.token});
+						var request = ai.textRequest(data.message, {sessionId: socket.token});
 						request.on('response', function(response){
 							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
 							if(response.result.action == 'input.unknown'){
@@ -472,7 +530,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 								reducer(actions.REMOVE_ERROR_SESSION(socket.token));
 							}
 							io.broadcastGetSessionsDialog({session_hash: socket.token});
-							io.broadcastGetSessions();
+							io.broadcastGetSessions(data.organization_id);
 							io.broadcastGetSessionInfo(socket.attributes.session_id);
 						});
 						setTimeout(function(){
@@ -482,15 +540,15 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 					socket.attributes.session_hash = socket.token;
 					io.broadcastGetSessionInfo(socket.attributes.session_id);
 					io.broadcastGetSessionsDialog({session_hash: socket.token});
-					io.broadcastGetSessions();
+					io.broadcastGetSessions(data.organization_id);
 				});
 			});
 		});
 		socket.on("WIDGET_CLIENT_INFO", function(data){
-			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data), function(){
-				io.broadcastGetClients();
+			reducer(actions[Types.UPDATE_CLIENT_INFORMATION](data.result), function(){
+				io.broadcastGetClients(data.organization_id);
 				io.broadcastGetSessionInfo(socket.attributes.session_id);
-				reducer(actions[Types.GET_CLIENT_ID](data.session_id), function(responce){
+				reducer(actions[Types.GET_CLIENT_ID](data.result.session_id), function(responce){
 					io.broadcastGetClient(responce[0].client_id);
 				});
 			});
@@ -510,14 +568,14 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			data.client_device_model = client_ua.device.model;
 			data.client_device_type = client_ua.device.type;
 			reducer(actions[Types.SET_CLIENT](data), function(){
-				io.broadcastGetClients();
-				io.broadcastGetSessions();
+				io.broadcastGetClients(data.organization_id);
+				io.broadcastGetSessions(data.organization_id);
 				io.broadcastGetSessionInfo(socket.attributes.session_id);
 			});
 		});
 		socket.on(Types.REMOVE_ERROR_SESSION, function(data){
 			reducer(actions[Types.REMOVE_ERROR_SESSION](data.session_hash), function(){
-				io.broadcastGetSessions();
+				io.broadcastGetSessions(socket.organization_id);
 				io.broadcastGetSessionInfo(data.session_id);
 			});
 		});
@@ -528,17 +586,17 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 		});
 		socket.on(Types.GET_DISPATCHES, function(data){
 			socket.switch = Types.GET_DISPATCHES;
-			reducer(actions[Types.GET_DISPATCHES](), function(response){
+			reducer(actions[Types.GET_DISPATCHES](data), function(response){
 				socket.emit(Types.GET_DISPATCHES, response);
 			});
 		});
 		socket.on(Types.DELETE_DISPATCH, function(data){
-			reducer(actions[Types.DELETE_DISPATCH](data), function(response){
-				io.broadcastGetDispatches();
+			reducer(actions[Types.DELETE_DISPATCH](data.dispatch_id), function(response){
+				io.broadcastGetDispatches(data.organization_id);
 			});
 		});
 		socket.on(Types.NEW_DISPATCH, function(data){
-			reducer(actions[Types.GET_ALL_SESSIONS](), function(responce){
+			reducer(actions[Types.GET_ALL_SESSIONS](data.organization_id), function(responce){
 				for(var i = 0; i < responce.length; i++){
 					var session = responce[i];
 					if((session.session_partner && data.dispatch_partner) || (session.session_faq && data.dispatch_faq) || (session.session_sale && data.dispatch_sale)){
@@ -561,7 +619,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 										telegram_bot.sendMessage(refactor_hash, obj.message);
 										io.broadcastGetSessionsDialog({session_id: obj.id});
 										io.broadcastGetSessionInfo(obj.id);
-										io.broadcastGetSessions();
+										io.broadcastGetSessions(socket.organization_id);
 									}
 								}
 							}).bind(this, {
@@ -581,7 +639,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 								if(response){
 									io.broadcastGetSessionsDialog({session_id: obj.id});
 									io.broadcastGetSessionInfo(obj.id);
-									io.broadcastGetSessions();
+									io.broadcastGetSessions(socket.organization_id);
 								}
 							}).bind(this, {
 								hash: session.session_hash, 
@@ -592,7 +650,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 					}
 				}
 				reducer(actions[Types.NEW_DISPATCH](data), function(response){
-					io.broadcastGetDispatches();
+					io.broadcastGetDispatches(data.organization_id);
 				});
 			});
 		});
@@ -617,6 +675,35 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 					io.broadcastGetClient(data.client_id);
 					io.broadcastGetSessionInfo(data.session_id);
 				});
+			});
+		});
+		socket.on(Types.GET_ORGANIZATIONS, function(data){
+			socket.switch = Types.GET_ORGANIZATIONS;
+			reducer(actions[Types.GET_ORGANIZATIONS](data), function(response){
+				socket.emit(Types.GET_ORGANIZATIONS, response);
+			});
+		});
+		socket.on(Types.GET_ORGANIZATION, function(data){
+			socket.switch = Types.GET_ORGANIZATION;
+			socket.organization_id = data;
+			reducer(actions[Types.GET_ORGANIZATION](data), function(response){
+				socket.emit(Types.GET_ORGANIZATION, response);
+			});
+		});
+		socket.on(Types.UPDATE_ORGANIZATION_INFORMATION, function(data){
+			reducer(actions[Types.UPDATE_ORGANIZATION_INFORMATION](data), function(response){
+				io.broadcastGetOrganization(data.organization_id);
+				io.broadcastGetOrganizations();
+			});
+		});
+		socket.on(Types.CREATE_ORGANIZATION, function(data){
+			reducer(actions[Types.CREATE_ORGANIZATION](data), function(response){
+				io.broadcastGetOrganizations();
+			});
+		});
+		socket.on(Types.GET_USER_ORGANIZATION, function(data){
+			reducer(actions[Types.GET_USER_ORGANIZATION](data), function(response){
+				socket.emit(Types.GET_USER_ORGANIZATION, response[0]);
 			});
 		});
 	});
