@@ -1,7 +1,10 @@
 module.exports = function(data, callback){
 	this.mysql.query({
-		sql: "SELECT * FROM `clients`",
-		timeout: 1000
+		sql: "SELECT * FROM `clients` where `organization_id` = ?",
+		timeout: 1000,
+		values: [
+			data
+		]
 	}, function(err, responce){
 		if(callback){
 			err ?

@@ -5,23 +5,24 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 		});
 		if(!connection){
 			connection = telegram.connections[telegram.connections.push({hash: subject + message.chat.id, bot: true, error: false}) - 1];
-			reducer(actions.SET_SESSION({hash: subject + message.chat.id, type:"telegram", subject: subject}));
+			reducer(actions.SET_SESSION({hash: subject + message.chat.id, type:"telegram", subject: subject, organization_id: "1"}));
 			reducer(actions.GET_SESSION_ID(subject + message.chat.id), function(response){
 				connection.session_id = response[0].session_id;
 				reducer(actions.SET_CLIENT({
 					client_name: message.from.first_name + " " + message.from.last_name,
 					client_username: message.from.username,
-					session_id: connection.session_id
+					session_id: connection.session_id,
+					organization_id: "1"
 				}), function(responce){
-					io.broadcastGetClients();
-					io.broadcastGetSessions();
+					io.broadcastGetClients("1");
+					io.broadcastGetSessions("1");
 					io.broadcastGetSessionInfo(connection.session_id);
 				});
 			});
 		}
 		if(!connection.active){
 			reducer(actions.SET_ACTIVE({session_hash: subject + message.chat.id}), function(){
-				io.broadcastGetSessions();
+				io.broadcastGetSessions("1");
 				io.broadcastGetSessionInfo(connection.session_id);
 				message.active = true;
 			});
@@ -31,7 +32,7 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 		}
 		connection.timeout_id = setTimeout(function(){
 			reducer(actions.SET_INACTIVE({session_hash: subject + message.chat.id}), function(){
-				io.broadcastGetSessions();
+				io.broadcastGetSessions("1");
 				io.broadcastGetSessionInfo(connection.session_id);
 				message.active = false;
 			});
@@ -41,7 +42,7 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 			hash: subject + message.chat.id
 		}));
 		io.broadcastGetSessionsDialog({session_hash: subject + message.chat.id});
-		io.broadcastGetSessions();
+		io.broadcastGetSessions("1");
 		var request = apiai.textRequest(message.text, {sessionId: subject + message.chat.id});
 		request.on('response', function(response){
 			reducer(actions.GET_BOT_STATUS({session_hash: subject + message.chat.id}), function(data){
@@ -52,12 +53,12 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 						session = session[0] || {};
 						if(session.session_error && response.result.action != 'input.unknown'){
 							reducer(actions.REMOVE_ERROR_SESSION(session.session_hash), function(){
-								io.broadcastGetSessions();
+								io.broadcastGetSessions("1");
 								io.broadcastGetSessionInfo(session.session_id);
 							});
 						} else if(!session.session_error && response.result.action == 'input.unknown'){
 							reducer(actions.SET_ERROR_SESSION(session.session_hash), function(){
-								io.broadcastGetSessions();
+								io.broadcastGetSessions("1");
 								io.broadcastGetSessionInfo(session.session_id);
 							});
 						}
@@ -67,7 +68,7 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 					}
 					io.broadcastGetSessionsDialog({session_hash: subject + message.chat.id});
 					io.broadcastGetSessionInfo(connection.session_id);
-					io.broadcastGetSessions();
+					io.broadcastGetSessions("1");
 				}
 			});
 		});

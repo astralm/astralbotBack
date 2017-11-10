@@ -1,5 +1,8 @@
 module.exports = function(data, callback){
-	var result = [];
+	var result = [{
+		name: "organization_id",
+		value: data.organization_id
+	}];
 	if(data.filters.indexOf("all") == -1){
 		for(var i = 0; i < data.filters.length; i++){
 			var filter = data.filters[i];
@@ -89,18 +92,32 @@ module.exports = function(data, callback){
 						symbol: " BETWEEN "
 					});
 					break;
+				case "empty":
+					result.push({
+						name: "question",
+						value: "`question`=\"\" AND (`answer` IS NULL OR `answer`=\"\")",
+						symbol: "IS NULL OR "
+					});
+					break;
+				case "employed":
+					result.push({
+						name: "question",
+						value: "`question`!=\"\" OR `answer` IS NOT NULL OR `answer`!=\"\"",
+						symbol: "IS NOT NULL OR "
+					});
+					break;
 			}
 		}
 	}
 	var sql = "SELECT *, DATE_FORMAT(`session_dialog_update_date`, \'%Y-%d-%m %H:%i:%s\') as `session_dialog_update_date_formated` FROM `sessions_info_view`";
 	if(result.length > 0){
-		sql += " WHERE ";
+		sql += " WHERE (";
 		var _result = [];
 		for(var i = 0; i < result.length; i++){
 			var filter = result[i];
 			_result.push("`"+filter.name+"`"+(filter.symbol || "=")+filter.value);
 		}
-		sql += _result.join(" AND ");
+		sql += _result.join(") AND (") + ")";
 	}
 	if(data.order){
 		sql += " ORDER BY `"+data.order.name+"` ";
@@ -108,7 +125,7 @@ module.exports = function(data, callback){
 			sql += "DESC ";
 		}
 	}
-	sql += "LIMIT 50 OFFSET "+data.offset;
+	sql += "LIMIT 50 OFFSET "+data.offset;	
 	this.mysql.query({
 		sql: sql,
 		timeout: 1000
