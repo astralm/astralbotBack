@@ -1,22 +1,27 @@
-module.exports = function(telegram, apiai, reducer, actions, io, subject){
+module.exports = function(telegram, apiai, reducer, actions, io, subject, notification){
 	telegram.on("message", function(message){
 		var connection = telegram.connections.find(function(connection){
 			return connection.hash == message.chat.id;
 		});
 		if(!connection){
 			connection = telegram.connections[telegram.connections.push({hash: subject + message.chat.id, bot: true, error: false}) - 1];
-			reducer(actions.SET_SESSION({hash: subject + message.chat.id, type:"telegram", subject: subject, organization_id: "1"}));
-			reducer(actions.GET_SESSION_ID(subject + message.chat.id), function(response){
-				connection.session_id = response[0].session_id;
-				reducer(actions.SET_CLIENT({
-					client_name: message.from.first_name + " " + message.from.last_name,
-					client_username: message.from.username,
-					session_id: connection.session_id,
-					organization_id: "1"
-				}), function(responce){
-					io.broadcastGetClients("1");
-					io.broadcastGetSessions("1");
-					io.broadcastGetSessionInfo(connection.session_id);
+			reducer(actions.SET_SESSION({
+				hash: subject + message.chat.id, type:"telegram", 
+				subject: subject, 
+				organization_id: "1"
+			}), function(){
+				reducer(actions.GET_SESSION_ID(subject + message.chat.id), function(response){
+					connection.session_id = response[0].session_id;
+					reducer(actions.SET_CLIENT({
+						client_name: message.from.first_name + " " + message.from.last_name,
+						client_username: message.from.username,
+						session_id: connection.session_id,
+						organization_id: "1"
+					}), function(responce){
+						io.broadcastGetClients("1");
+						io.broadcastGetSessions("1");
+						io.broadcastGetSessionInfo(connection.session_id);
+					});
 				});
 			});
 		}
@@ -60,6 +65,13 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject){
 							reducer(actions.SET_ERROR_SESSION(session.session_hash), function(){
 								io.broadcastGetSessions("1");
 								io.broadcastGetSessionInfo(session.session_id);
+								reducer(actions.GET_NOTIFICATIONS_USERS(session.organization_id), function(responce){
+									if(responce && responce.length > 0){
+										for(var i = 0; i < responce.length; i++){
+											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session.session_id);
+										}
+									}
+								});
 							});
 						}
 					});

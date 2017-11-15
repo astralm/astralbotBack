@@ -10,6 +10,17 @@ function broadcastGetUsers(organization_id){
 		}
 	});
 }
+function broadcastGetUser(organization_id, user_email){
+	var _this = this;
+	this.reducer(this.actions.GET_USER(user_email), function(response){
+		for(var socketKey in _this.io.sockets.sockets){
+			var socket = _this.io.sockets.sockets[socketKey];
+			if(socket.switch == Types.GET_USER && socket.organization_id == organization_id){
+				socket.emit(Types.GET_USER, response);
+			}
+		}
+	});
+}
 function broadcastGetSessionInfo(session_id){
 	var _this = this;
 	this.reducer(this.actions.GET_SESSION_INFO(session_id), function(response){
@@ -170,7 +181,7 @@ function broadcastGetOrganization(organization_id){
 		}
 	});
 }
-module.exports = function(io, reducer, actions, ua, telegram, apiai){
+module.exports = function(io, reducer, actions, ua, telegram, apiai, notification){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
 	io.broadcastGetSessionInfo = broadcastGetSessionInfo.bind({reducer, actions, io});
@@ -180,6 +191,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 	io.broadcastGetClients = broadcastGetClients.bind({reducer, actions, io});
 	io.broadcastGetOrganizations = broadcastGetOrganizations.bind({reducer, actions, io});
 	io.broadcastGetOrganization = broadcastGetOrganization.bind({reducer, actions, io});
+	io.broadcastGetUser = broadcastGetUser.bind({reducer, actions, io});
 	io.on('connection', function(socket){
 		socket.attributes = {};
 		socket.bot = true;
@@ -227,6 +239,12 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 			socket.switch = Types.GET_USERS;
 			reducer(actions.GET_USERS(data), function(response){
 				socket.emit(Types.GET_USERS, response);
+			});
+		});
+		socket.on(Types.GET_USER, function(data){
+			socket.switch = Types.GET_USER;
+			reducer(actions.GET_USER(data), function(responce){
+				socket.emit(responce);
 			});
 		});
 		socket.on(Types.SET_USER, function(data){
@@ -526,6 +544,13 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai){
 							reducer(actions.SET_ANSWER({hash: socket.token, message: response.result.fulfillment.speech}));
 							if(response.result.action == 'input.unknown'){
 								reducer(actions.SET_ERROR_SESSION(socket.token));
+								reducer(actions.GET_NOTIFICATIONS_USERS(session_info[0].organization_id), function(responce){
+									if(responce && responce.length > 0){
+										for(var i = 0; i < responce.length; i++){
+											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session_info[0].session_id);
+										}
+									}
+								});
 							} else if (response.result.action != 'input.unknown'){
 								reducer(actions.REMOVE_ERROR_SESSION(socket.token));
 							}
