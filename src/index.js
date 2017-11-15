@@ -14,6 +14,7 @@ var fs = require('fs'),
 	telegram_partner = new (require('node-telegram-bot-api'))(env.telegram.partner, {polling: true}),
 	telegram_sale = new (require('node-telegram-bot-api'))(env.telegram.sale, {polling: true}),
 	telegram_faq = new (require('node-telegram-bot-api'))(env.telegram.faq, {polling: true}),
+	telegram_notifications = new (require('node-telegram-bot-api'))(env.telegram.notifications, {polling: true}),
 	apiai_partner = require('apiai')(env.apiai.partner),
 	apiai_faq = require('apiai')(env.apiai.faq),
 	apiai_sale = require('apiai')(env.apiai.sale),
@@ -36,7 +37,8 @@ require("./ws/index.js")(
 		partner: apiai_partner,
 		sale: apiai_sale,
 		faq: apiai_faq
-	}
+	},
+	telegram_notifications
 );
 require("./telegram/index.js")(
 	telegram_partner,
@@ -44,7 +46,8 @@ require("./telegram/index.js")(
 	reducer,
 	Events,
 	io,
-	"partner"
+	"partner",
+	telegram_notifications
 );
 require("./telegram/index.js")(
 	telegram_faq,
@@ -52,7 +55,8 @@ require("./telegram/index.js")(
 	reducer,
 	Events,
 	io,
-	"faq"
+	"faq",
+	telegram_notifications
 );
 require("./telegram/index.js")(
 	telegram_sale,
@@ -60,9 +64,15 @@ require("./telegram/index.js")(
 	reducer,
 	Events,
 	io,
-	"sale"
+	"sale",
+	telegram_notifications
 );
-
+require("./telegram/notification.js")(
+	reducer,
+	Events,
+	telegram_notifications,
+	io
+);
 
 
 
