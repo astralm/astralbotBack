@@ -69,6 +69,12 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject, notifi
 									if(responce && responce.length > 0){
 										for(var i = 0; i < responce.length; i++){
 											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session.session_id);
+											io.broadcastNotification(session.organization_id, {
+												title: "Сессия " + session.session_id,
+												body: "Бот не смог подобрать ответ",
+												session_id: session.session_id,
+												requireInteraction: true
+											});
 										}
 									}
 								});
