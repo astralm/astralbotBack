@@ -181,6 +181,14 @@ function broadcastGetOrganization(organization_id){
 		}
 	});
 }
+function broadcastNotification(organization_id, notification_data){
+	for(var socketKey in this.io.sockets.sockets){
+		var socket = this.io.sockets.sockets[socketKey];
+		if(socket.organization_id == organization_id){
+			socket.emit("NOTIFICATION", notification_data);
+		}
+	}
+}
 module.exports = function(io, reducer, actions, ua, telegram, apiai, notification){
 	io.broadcastGetUsers = broadcastGetUsers.bind({reducer, actions, io});
 	io.broadcastGetSessions = broadcastGetSessions.bind({reducer, actions, io});
@@ -192,6 +200,7 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 	io.broadcastGetOrganizations = broadcastGetOrganizations.bind({reducer, actions, io});
 	io.broadcastGetOrganization = broadcastGetOrganization.bind({reducer, actions, io});
 	io.broadcastGetUser = broadcastGetUser.bind({reducer, actions, io});
+	io.broadcastNotification = broadcastNotification.bind({reducer, actions, io});
 	io.on('connection', function(socket){
 		socket.attributes = {};
 		socket.bot = true;
@@ -550,6 +559,12 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session_info[0].session_id);
 										}
 									}
+								});
+								io.broadcastNotification(session_info[0].organization_id, {
+									title: "Сессия " + session_info[0].session_id,
+									body: "Бот не смог подобрать ответ",
+									session_id: session_info[0].session_id,
+									requireInteraction: true
 								});
 							} else if (response.result.action != 'input.unknown'){
 								reducer(actions.REMOVE_ERROR_SESSION(socket.token));
