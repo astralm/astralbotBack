@@ -556,7 +556,9 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 								reducer(actions.GET_NOTIFICATIONS_USERS(session_info[0].organization_id), function(responce){
 									if(responce && responce.length > 0){
 										for(var i = 0; i < responce.length; i++){
-											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session_info[0].session_id);
+											reducer(actions.GET_CLIENT_ID(session_info[0].session_id), (function(number, client_id){
+												notification.sendMessage(responce[number].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session_info[0].session_id + "; \nСсылка на диалог: https://astralbot.ru/#/app/dialog:" + session_info[0].session_id + "\nСсылка на клиента: https://astralbot.ru/#/app/client:" + client_id[0].client_id + "\nСообщение: \""+data.message+"\"");
+											}).bind(this, i));
 										}
 									}
 								});
