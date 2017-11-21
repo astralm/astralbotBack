@@ -68,7 +68,9 @@ module.exports = function(telegram, apiai, reducer, actions, io, subject, notifi
 								reducer(actions.GET_NOTIFICATIONS_USERS(session.organization_id), function(responce){
 									if(responce && responce.length > 0){
 										for(var i = 0; i < responce.length; i++){
-											notification.sendMessage(responce[i].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session.session_id);
+											reducer(actions.GET_CLIENT_ID(session.session_id), (function(number, client_id){
+												notification.sendMessage(responce[number].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session.session_id + "; \nСсылка на диалог: https://astralbot.ru/#/app/dialog:" + session.session_id + "\nСсылка на клиента: https://astralbot.ru/#/app/client:" + client_id[0].client_id + "\nСообщение: \""+message.text+"\"");
+											}).bind(this, i));
 											io.broadcastNotification(session.organization_id, {
 												title: "Сессия " + session.session_id,
 												body: "Бот не смог подобрать ответ",
