@@ -10,7 +10,6 @@ module.exports = function(data, callback){
 	hash = hash.join("");
 	this.mysql.query({
 		sql: 'INSERT INTO `users` (`user_email`, `user_password`, `user_name`, `organization_id`, `user_notification_hash`) VALUES (?, ?, ?, ?, ?)',
-		timeout: 1000,
 		values: [
 			data.email,
 			data.password,

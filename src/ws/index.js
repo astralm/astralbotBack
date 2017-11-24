@@ -218,9 +218,11 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 						socket.emit(Types.UPDATE_USER, response);
 						socket.emit(Types.LOGIN, responce);
 						io.broadcastGetUsers(socket.organization_id);
-						reducer(actions[Types.GET_ORGANIZATION](response[0].organization_id), function(responce){
-							socket.emit(Types.GET_USER_ORGANIZATION, responce[0]);
-						});
+						if(response && response[0]){
+							reducer(actions[Types.GET_ORGANIZATION](response[0].organization_id), function(responce){
+								socket.emit(Types.GET_USER_ORGANIZATION, responce[0]);
+							});
+						}
 					});
 				}
 			});

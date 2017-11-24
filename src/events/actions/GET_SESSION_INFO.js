@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: 'SELECT * FROM `session_info_view` WHERE `session_id` = ?',
-		timeout: 1000,
 		values: [
 			+data
 		]

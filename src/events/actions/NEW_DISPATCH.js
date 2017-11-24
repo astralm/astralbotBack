@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: "INSERT INTO `dispatches` (`user_id`, `dispatch_message`, `dispatch_telegram`, `dispatch_widget`, `dispatch_partner`, `dispatch_faq`, `dispatch_sale`, `organization_id`) VALUES (?,?,?,?,?,?,?,?)",
-		timeout: 1000,
 		values: [
 			data.user_id,
 			data.dispatch_message,

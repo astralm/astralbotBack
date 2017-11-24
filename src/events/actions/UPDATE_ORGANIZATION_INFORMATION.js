@@ -7,7 +7,6 @@ module.exports = function(data, callback){
 		sql: 'UPDATE `organizations` SET ' + result.map(function(item){
 			return "`" + item + "` = ?";
 		}).join(", ") + ' WHERE `organization_id` = ?',
-		timeout: 1000,
 		values: result.map(function(item){
 			return data[item].toString();
 		}).concat(data.organization_id)
