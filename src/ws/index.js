@@ -750,5 +750,15 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 				socket.emit(Types.GET_USER_ORGANIZATION, response[0]);
 			});
 		});
+		socket.on(Types.CLOSE_WIDGETS, function(data){
+			reducer(actions[Types.CLOSE_WIDGETS](data), function(responce){
+				socket.emit(Types.CLOSE_WIDGETS, responce ? true : false);
+			});
+		});
+		socket.on("WIDGET_INFO", function(data){
+			reducer(actions.CHECK_WIDGET(data), function(response){
+				response && response[0].organization_close_widget == 1 && socket.disconnect();
+			});
+		});
 	});
 }
