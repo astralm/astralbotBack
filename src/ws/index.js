@@ -218,9 +218,11 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 						socket.emit(Types.UPDATE_USER, response);
 						socket.emit(Types.LOGIN, responce);
 						io.broadcastGetUsers(socket.organization_id);
-						reducer(actions[Types.GET_ORGANIZATION](response[0].organization_id), function(responce){
-							socket.emit(Types.GET_USER_ORGANIZATION, responce[0]);
-						});
+						if(response && response[0]){
+							reducer(actions[Types.GET_ORGANIZATION](response[0].organization_id), function(responce){
+								socket.emit(Types.GET_USER_ORGANIZATION, responce[0]);
+							});
+						}
 					});
 				}
 			});
@@ -746,6 +748,16 @@ module.exports = function(io, reducer, actions, ua, telegram, apiai, notificatio
 		socket.on(Types.GET_USER_ORGANIZATION, function(data){
 			reducer(actions[Types.GET_USER_ORGANIZATION](data), function(response){
 				socket.emit(Types.GET_USER_ORGANIZATION, response[0]);
+			});
+		});
+		socket.on(Types.CLOSE_WIDGETS, function(data){
+			reducer(actions[Types.CLOSE_WIDGETS](data), function(responce){
+				socket.emit(Types.CLOSE_WIDGETS, responce ? true : false);
+			});
+		});
+		socket.on("WIDGET_INFO", function(data){
+			reducer(actions.CHECK_WIDGET(data), function(response){
+				response && response[0].organization_close_widget == 1 && socket.disconnect();
 			});
 		});
 	});

@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: "UPDATE `users` SET `user_notification`=?, `user_notification_chat`=? WHERE `user_id`=?",
-		timeout: 1000,
 		values: [
 			1,
 			data.chat_id,

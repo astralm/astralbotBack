@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: 'UPDATE `sessions` SET `session_error` = 1 WHERE `session_hash` = ?',
-		timeout: 1000,
 		values: [
 			data
 		]

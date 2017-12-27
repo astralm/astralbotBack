@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: 'UPDATE `users` SET `user_status` = ? WHERE `user_email` = ? AND `user_password` = ?',
-		timeout: 1000,
 		values: [
 			1,
 			data.email,

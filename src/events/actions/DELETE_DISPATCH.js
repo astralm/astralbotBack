@@ -1,7 +1,6 @@
 module.exports = function(data, callback){
 	this.mysql.query({
 		sql: "DELETE FROM `dispatches` WHERE `dispatch_id` = ?",
-		timeout: 1000,
 		values: [
 			data
 		]

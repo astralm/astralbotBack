@@ -8,7 +8,6 @@ module.exports = function(data, callback){
 		sql: "UPDATE `clients` SET " + result.map(function(item){
 			return item + "=?";
 		}).join(", ") + "WHERE `session_id`=?",
-		timeout: 1000,
 		values: Object.keys(data).filter(function(data_item){
 			return data_item != "session_id" && data_item != "client_id";
 		}).map(function(item){

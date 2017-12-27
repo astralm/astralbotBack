@@ -9,7 +9,6 @@ module.exports = function(data, callback){
 	}
 	this.mysql.query({
 		sql: "INSERT INTO `clients` ("+attributesNames.join(",")+") VALUES ("+attributesSymbols.join(",")+")",
-		timeout: 1000,
 		values: attributesValues
 	}, function(err, responce){
 		if(callback){

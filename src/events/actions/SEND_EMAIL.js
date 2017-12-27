@@ -2,7 +2,6 @@ module.exports = function(data, callback){
 	var transporter = this.transporter;
 	this.mysql.query({
 		sql: "SELECT `user_password` FROM `users` WHERE `user_email` = ?",
-		timeout: 1000,
 		values: [
 			data
 		]
