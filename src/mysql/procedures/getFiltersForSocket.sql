@@ -36,7 +36,8 @@ BEGIN
                     "limit", 50,
                     "offset", 0,
                     "desc", 1,
-                    "filters", JSON_ARRAY("all")
+                    "filters", JSON_ARRAY("all"),
+                    "bots", JSON_ARRAY()
                 );
             END IF;
             UPDATE states SET state_json = JSON_SET(state_json, "$.sessionsFilters", sessionsFilters) WHERE socket_id = socketID;

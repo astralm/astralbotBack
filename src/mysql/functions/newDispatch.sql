@@ -30,7 +30,7 @@ BEGIN
 		        ELSE LEAVE botsLOOP;
 		      END IF;
 		  END LOOP;
-		  CALL setMessagesForDispatch(dispatchID);
+		  SET responce = JSON_MERGE(responce, setMessagesForDispatch(dispatchID));
 		  CALL getDispatchesForSocket(socketID);
 		  SET responce = JSON_MERGE(responce, dispatchDispatches(organizationID));
 		  SET responce = JSON_MERGE(responce, JSON_OBJECT(

@@ -63,7 +63,7 @@ BEGIN
                     "socket", connectionID,
                     "data", JSON_ARRAY(
                       JSON_OBJECT(
-                        "action", "mergeDeep",
+                        "action", "merge",
                         "data", JSON_OBJECT(
                           "dialog", dialog,
                           "page", typeID

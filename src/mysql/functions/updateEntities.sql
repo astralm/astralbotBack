@@ -46,8 +46,8 @@ BEGIN
                 SET entitiesIterator = entitiesIterator + 1;
                 ITERATE entitiesLoop;
             END LOOP;
-            UPDATE states SET state_json = JSON_SET(state_json, "$.page", 35, "$.bot", JSON_OBJECT("bot_id", botID)) WHERE socket_id = socketID;
-            SET responce = JSON_MERGE(responce, getEntityForSocket(socketID, entitiesID));
+            UPDATE states SET state_json = JSON_SET(state_json, "$.page", 35, "$.bot", JSON_OBJECT("bot_id", botID), "$.entity", JSON_OBJECT("entities_id", entitiesID)) WHERE socket_id = socketID;
+            SET responce = JSON_MERGE(responce, dispatchEntity(organizationID, entitiesID));
             SET responce = JSON_MERGE(responce, JSON_ARRAY(
                 JSON_OBJECT(
                     "action", "Procedure",

@@ -40,17 +40,10 @@ BEGIN
 				JSON_OBJECT(
 					"action", "merge",
 					"data", JSON_OBJECT(
-						"page", 35,
 						"entity", entity,
 						"bot", JSON_OBJECT(
 							"bot_id", botID
 						)
-					)
-				),
-				JSON_OBJECT(
-					"action", "changePage",
-					"data", JSON_OBJECT(
-						"page", CONCAT("app/entity:", entitiesID)
 					)
 				)
 			)

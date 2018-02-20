@@ -1,11 +1,12 @@
 BEGIN
 	DECLARE validOperation TINYINT(1) DEFAULT validStandartOperation(userHash, socketHash);
-    DECLARE sessionsFilters, removeResult, bots, filterBots JSON;
+    DECLARE sessionsFilters, removeResult, bots, filterBots, responce JSON;
     DECLARE socketID, filterLimit, filterOffset, Llimit, Oofset INT(11);
     DECLARE connectionID, filterName VARCHAR(128);
     DECLARE dateStart, dateEnd, filterDateStart, filterDateEnd VARCHAR(19);
     DECLARE filterOrder, Oorder VARCHAR(512);
-    DECLARE filterDesc, Ddesc TINYINT(1);
+    DECLARE filterDesc, Ddesc TINYINT(1); 
+    SET responce = JSON_ARRAY();
     IF validOperation
     	THEN BEGIN
             SET filterDateStart = DATE(FROM_UNIXTIME(JSON_UNQUOTE(JSON_EXTRACT(filter, "$.dateStart"))));
@@ -201,7 +202,7 @@ BEGIN
                 "$.sessionsFilters.desc", Ddesc
             ) WHERE socket_id = socketID;
             SELECT state_json ->> "$.sessionsFilters" INTO sessionsFilters FROM states WHERE socket_id = socketID;
-            RETURN JSON_ARRAY(
+            SET responce = JSON_MERGE(responce, JSON_ARRAY(
                 JSON_OBJECT(
                     "action", "sendToSocket",
                     "data", JSON_OBJECT(
@@ -223,8 +224,8 @@ BEGIN
                         "values", JSON_ARRAY(socketID)
                     )
                 )
-            );
+            ));
         END;
-        ELSE RETURN 0;
     END IF;
+    RETURN responce;
 END

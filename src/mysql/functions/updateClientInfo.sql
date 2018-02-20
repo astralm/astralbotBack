@@ -2,7 +2,7 @@ BEGIN
 	DECLARE validOperation TINYINT(1) DEFAULT validStandartOperation(userHash, socketHash);
 	DECLARE uUsername, eEmail, connectionID VARCHAR(128);
 	DECLARE pPhone BIGINT(11);
-	DECLARE socketID, organizationID INT(11);
+	DECLARE socketID, organizationID, dialogID INT(11);
 	DECLARE nName VARCHAR(64);
 	DECLARE responce JSON;
 	SET responce = JSON_ARRAY();
@@ -40,8 +40,10 @@ BEGIN
 				client_phone = pPhone, 
 				client_name = nName
 			WHERE client_id = clientID;
+			SELECT dialog_id INTO dialogID FROM dialogues WHERE client_id = clientID;
 			UPDATE states SET state_json = JSON_SET(state_json, "$.page", 11) WHERE socket_id = socketID;
 			SET responce = JSON_MERGE(responce, dispatchClientInfo(organizationID, clientID));
+			SET responce = JSON_MERGE(responce, dispatchDialog(organizationID, dialogID));
 			SET responce = JSON_MERGE(responce, JSON_ARRAY(
 				JSON_OBJECT(
 					"action", "Procedure",

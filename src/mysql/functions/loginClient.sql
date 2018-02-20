@@ -56,7 +56,7 @@ BEGIN
 			)
 		);
 	END IF;
-	RETURN JSON_ARRAY(
+	RETURN JSON_MERGE(JSON_ARRAY(
 		JSON_OBJECT(
 			"action", "sendToSocket",
 			"data", JSON_OBJECT(
@@ -72,6 +72,15 @@ BEGIN
 					organizationID
 				)
 			)
+		),
+		JSON_OBJECT(
+			"action", "Procedure",
+			"data", JSON_OBJECT(
+				"query", "dispatchClients",
+				"values", JSON_ARRAY(
+					organizationID
+				)
+			)
 		)
-	);
+	), dispatchDialog(organizationID, dialogID));
 END
