@@ -11,6 +11,9 @@ BEGIN
     SELECT dialog_id, dialog_bot_work INTO dialogID, dialogBotWork FROM dialogues WHERE client_id = clientID;
     INSERT INTO messages (message_text, dialog_id, message_client) VALUES (messageText, dialogID, 1);
     SELECT message_id INTO messageID FROM messages ORDER BY message_id DESC LIMIT 1;
+    CALL getMessagesForSocket(socketID, dialogID);
+    SELECT state_json ->> "$.messages" INTO messagesArray FROM states WHERE socket_id = socketID;
+    SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messagesArray, 0));
     IF dialogBotWork
         THEN BEGIN
             SET answerID = getAnswerIdForMessage(messageID);
@@ -27,13 +30,13 @@ BEGIN
                 ELSE BEGIN
                     SELECT answer_text INTO answerText FROM answers WHERE answer_id = answerID;
                     INSERT INTO messages (message_text, dialog_id) VALUES (answerText, dialogID);
+                    CALL getMessagesForSocket(socketID, dialogID);
+                    SELECT state_json ->> "$.messages" INTO messagesArray FROM states WHERE socket_id = socketID;
+                    SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messagesArray, 7000));
                 END;
             END IF;
         END;
     END IF;
-    CALL getMessagesForSocket(socketID, dialogID);
-    SELECT state_json ->> "$.messages" INTO messagesArray FROM states WHERE socket_id = socketID;
-    SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messagesArray));
     SET responce = JSON_MERGE(responce, JSON_OBJECT(
         "action", "Procedure",
         "data", JSON_OBJECT(

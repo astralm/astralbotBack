@@ -15,6 +15,7 @@ BEGIN
 				"action", "sendToSocket",
 				"data", JSON_OBJECT(
 					"socket", connectionID,
+					"timeout", timeout,
 					"data", JSON_ARRAY(
 						JSON_OBJECT(
 							"action", action,

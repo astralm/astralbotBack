@@ -16,7 +16,11 @@ module.exports = class App {
 	dispatch(event){
 		return new Promise((resolve, reject) => {
 			if(this.events[event.type]){
-				this.events[event.type](resolve, reject, event.data);
+				if(event.data.timeout && event.data.timeout > 0){
+					setTimeout(this.events[event.type].bind(this, resolve, reject, event.data), event.data.timeout);
+				} else {
+					this.events[event.type](resolve, reject, event.data);
+				}
 			} else {
 				reject(`event ${event.type} not found`);
 			}

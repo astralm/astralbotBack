@@ -47,6 +47,7 @@ BEGIN
 						"action", "sendToTelegram",
 						"data", JSON_OBJECT(
 							"bot_id", botID,
+							"timeout", 7000,
 							"chats", JSON_ARRAY(
 								chat
 							),
