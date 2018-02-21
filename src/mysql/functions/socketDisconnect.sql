@@ -34,6 +34,15 @@ BEGIN
         )
       ));
     END;
+    ELSEIF typeID = 2 THEN SET responce = JSON_MERGE(responce, JSON_OBJECT(
+      "action", "Procedure",
+      "data", JSON_OBJECT(
+        "query", "dispatchUsers",
+        "values", JSON_ARRAY(
+          organizationID
+        )
+      )
+    ));
   END IF;
   RETURN responce;
 END

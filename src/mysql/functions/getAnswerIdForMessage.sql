@@ -3,11 +3,11 @@ BEGIN
     DECLARE answerID, entitiesID, essenceID, stringLength, organizationID, dialogID, botID, lastLocate, essenceLength INT(11);
     DECLARE essenceValue VARCHAR(1024);
     DECLARE done TINYINT(1);
-    DECLARE essencesCursor CURSOR FOR SELECT essence_value, essence_id, CHAR_LENGTH(essence_value) FROM essences;
+    DECLARE essencesCursor CURSOR FOR SELECT LOWER(essence_value), essence_id, CHAR_LENGTH(essence_value) FROM essences;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
     SET entitiesString = "";
     SET answerID = 0;
-    SELECT message_text, dialog_id INTO messageText, dialogID FROM messages WHERE message_id = messageID;
+    SELECT LOWER(message_text), dialog_id INTO messageText, dialogID FROM messages WHERE message_id = messageID;
     SELECT organization_id, bot_id INTO organizationID, botID FROM dialogues WHERE dialog_id = dialogID; 
     SET stringLength = CHAR_LENGTH(messageText);
     IF stringLength > 0

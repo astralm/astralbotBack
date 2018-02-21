@@ -3,7 +3,7 @@ BEGIN
     DECLARE userID INT(11) DEFAULT (SELECT user_id FROM users WHERE user_hash = userHash);
     DECLARE socketID INT(11) DEFAULT (SELECT socket_id FROM sockets WHERE socket_hash = socketHash);
     DECLARE connectionID VARCHAR(128) DEFAULT (SELECT socket_connection_id FROM sockets WHERE socket_id = socketID);
-    DECLARE userSocketID INT(11);
+    DECLARE userSocketID, organizationID INT(11);
     DECLARE stateJson JSON;
     IF socketType = 2 AND userID > 0 AND socketID > 0
     	THEN 
@@ -19,22 +19,34 @@ BEGIN
                         "loginMessage", "Вы успешно вышли из системы"
                     ) WHERE socket_id = socketID;
                     SELECT state_json INTO stateJson FROM states WHERE socket_id = socketID;
-                    RETURN JSON_ARRAY(JSON_OBJECT(
-                    	"action", "sendToSocket",
-                        "data", JSON_OBJECT(
-                        	"socket", connectionID,
-                            "data", JSON_ARRAY(
-                                JSON_OBJECT(
-                                	"action", "deleteLocal",
-                                    "data", "user"
-                                ),
-                            	JSON_OBJECT(
-                                	"action", "setState",
-                                    "data", stateJson
+                    SELECT organization_id INTO organizationID FROM users WHERE user_id = userID;
+                    RETURN JSON_ARRAY(
+                        JSON_OBJECT(
+                        	"action", "sendToSocket",
+                            "data", JSON_OBJECT(
+                            	"socket", connectionID,
+                                "data", JSON_ARRAY(
+                                    JSON_OBJECT(
+                                    	"action", "deleteLocal",
+                                        "data", "user"
+                                    ),
+                                	JSON_OBJECT(
+                                    	"action", "setState",
+                                        "data", stateJson
+                                    )
+                                )
+                            )
+                        ),
+                        JSON_OBJECT(
+                            "action", "Procedure",
+                            "data", JSON_OBJECT(
+                                "query", "dispatchUsers",
+                                "values", JSON_ARRAY(
+                                    organizationID
                                 )
                             )
                         )
-                    ));
+                    );
             END IF;
     END IF;
     RETURN NULL;

@@ -61,6 +61,15 @@ BEGIN
               ),
               changePageJson
             );
+            SET responceJson = JSON_MERGE(responceJson, JSON_OBJECT(
+              "action", "Procedure",
+              "data", JSON_OBJECT(
+                "query", "dispatchUsers",
+                "values", JSON_ARRAY(
+                  organizationID
+                )
+              )
+            ));
         ELSE 
           UPDATE states SET state_json = JSON_SET(state_json, "$.loginMessage", "Неправильный логин или пароль") WHERE socket_id = socketID;
             SELECT state_json INTO stateJson FROM states WHERE socket_id = socketID;

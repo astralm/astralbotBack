@@ -27,6 +27,7 @@ BEGIN
 	END IF;
 	INSERT INTO messages (message_text, dialog_id, message_client) VALUES (messageText, dialogID, 1);
 	SELECT message_id INTO messageID FROM messages ORDER BY message_id DESC LIMIT 1;
+	UPDATE dialogues SET dialog_active = 1 WHERE dialog_id = dialogID;
 	IF dialogBotWork
 		THEN BEGIN
 			SET answerID = getAnswerIdForMessage(messageID);
@@ -47,11 +48,11 @@ BEGIN
 						"action", "sendToTelegram",
 						"data", JSON_OBJECT(
 							"bot_id", botID,
-							"timeout", 7000,
 							"chats", JSON_ARRAY(
 								chat
 							),
-							"message", answerText
+							"message", answerText,
+							"timeout", 7000
 						)
 					));
 				END;
@@ -59,14 +60,26 @@ BEGIN
 		END;
 	END IF;
 	SET responce = JSON_MERGE(responce, dispatchDialog(organizationID, dialogID));
-	SET responce = JSON_MERGE(responce, JSON_OBJECT(
-    "action", "Procedure",
-    "data", JSON_OBJECT(
-        "query", "dispatchSessions",
-        "values", JSON_ARRAY(
-            organizationID
-        )
-    )
+	SET responce = JSON_MERGE(responce, JSON_ARRAY(
+		JSON_OBJECT(
+	    "action", "Procedure",
+	    "data", JSON_OBJECT(
+	        "query", "dispatchSessions",
+	        "values", JSON_ARRAY(
+	            organizationID
+	        )
+	    )
+	  ),
+		JSON_OBJECT(
+	    "action", "Query",
+	    "data", JSON_OBJECT(
+	        "query", "checkTelegramDialog",
+	        "timeout", 600000,
+	        "values", JSON_ARRAY(
+	            dialogID
+	        )
+	    )
+	  )
   ));
 	RETURN responce;
-END;
+END
