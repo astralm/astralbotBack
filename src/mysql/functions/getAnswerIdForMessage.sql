@@ -27,7 +27,7 @@ BEGIN
                     THEN LEAVE searchLoop;
                 END IF;
                 SET messageText = SUBSTRING(messageText, lastLocate + essenceLength);
-                SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID;
+                SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID AND bot_id = botID;
                 IF entitiesID IS NOT NULL
                     THEN BEGIN 
                         SET entitiesString = CONCAT(entitiesString, ",", entitiesID);

@@ -3068,7 +3068,7 @@ BEGIN
                     THEN LEAVE searchLoop;
                 END IF;
                 SET messageText = SUBSTRING(messageText, lastLocate + essenceLength);
-                SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID;
+                SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID AND bot_id = botID;
                 IF entitiesID IS NOT NULL
                     THEN BEGIN 
                         SET entitiesString = CONCAT(entitiesString, ",", entitiesID);
@@ -6830,6 +6830,7 @@ DELIMITER ;
 CREATE TABLE `entities_essences` (
 `entities_id` int(11)
 ,`essence_id` int(11)
+,`bot_id` int(11)
 );
 CREATE TABLE `entities_info` (
 `entities_json` json
@@ -7562,7 +7563,7 @@ DROP TABLE IF EXISTS `dispatch_messages`;
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `dispatch_messages`  AS  select `messages`.`message_id` AS `message_id`,`messages`.`dialog_id` AS `dialog_id`,`messages`.`user_id` AS `user_id`,`messages`.`message_date_create` AS `message_date_create`,`messages`.`message_date_update` AS `message_date_update`,`messages`.`message_text` AS `message_text`,`messages`.`message_client` AS `message_client`,`messages`.`dispatch_id` AS `dispatch_id`,`messages`.`message_api_callback` AS `message_api_callback`,`messages`.`message_error` AS `message_error`,`messages`.`bot_id` AS `bot_id`,`messages`.`message_value` AS `message_value`,`messages`.`intent_id` AS `intent_id` from `messages` where ((`messages`.`dispatch_id` is not null) and (`messages`.`dispatch_id` > 0)) ;
 DROP TABLE IF EXISTS `entities_essences`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `entities_essences`  AS  select `e`.`entities_id` AS `entities_id`,`es`.`essence_id` AS `essence_id` from ((`entity` `e` join `entity_essences` `ee` on((`ee`.`entity_id` = `e`.`entity_id`))) join `essences` `es` on((`es`.`essence_id` = `ee`.`essence_id`))) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `entities_essences`  AS  select `e`.`entities_id` AS `entities_id`,`es`.`essence_id` AS `essence_id`,`e`.`bot_id` AS `bot_id` from ((`entity` `e` join `entity_essences` `ee` on((`ee`.`entity_id` = `e`.`entity_id`))) join `essences` `es` on((`es`.`essence_id` = `ee`.`essence_id`))) ;
 DROP TABLE IF EXISTS `entities_info`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `entities_info`  AS  select json_object('entities_id',`e`.`entities_id`,'entities_name',`e`.`entities_name`,'entities_entity_count',`e`.`entities_entity_count`,'group_id',`e`.`group_id`,'bot_id',`e`.`bot_id`,'group_name',`g`.`group_name`,'bot_name',`b`.`bot_name`) AS `entities_json`,`e`.`bot_id` AS `bot_id`,`e`.`entities_id` AS `entities_id`,`e`.`group_id` AS `group_id`,`e`.`organization_id` AS `organization_id` from ((`entities` `e` left join `bots` `b` on((`e`.`bot_id` = `b`.`bot_id`))) left join `groups` `g` on((`g`.`group_id` = `e`.`group_id`))) ;
