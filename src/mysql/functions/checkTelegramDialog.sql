@@ -18,18 +18,6 @@ BEGIN
 				)
 			));
 		END;
-		ELSE BEGIN
-			SET responce = JSON_MERGE(responce, JSON_OBJECT(
-				"action", "Query",
-				"data", JSON_OBJECT(
-					"query", "checkTelegramDialog",
-					"timeout", 600000,
-					"values", JSON_ARRAY(
-						dialogID
-					)
-				)
-			));
-		END;
 	END IF;
 	RETURN responce;
 END
