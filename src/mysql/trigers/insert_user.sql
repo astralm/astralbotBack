@@ -27,11 +27,6 @@ BEGIN
             END LOOP;
             SET NEW.user_hash = getHash(32);
             SET NEW.user_password = getHash(6);
-            IF NEW.user_creator IS NOT NULL
-            	THEN 
-                	SELECT organization_id INTO organizationID FROM users WHERE user_id = NEW.user_creator;
-                    SET NEW.organization_id = organizationID;
-            END IF;
         ELSE 
         	SIGNAL SQLSTATE '45000' set message_text="invalid email address";
     END IF;
