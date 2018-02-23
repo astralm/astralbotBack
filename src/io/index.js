@@ -1,15 +1,17 @@
 const io = require('socket.io'),
 			express = require('express')(),
 			helmet = require('helmet')(),
+			fs = require('fs'),
 			ua = require('ua-parser-js');
 let Then = require('../then'),
 		Err = require('../err');
 module.exports = (env, reducer) => {
 	Then = Then.bind(this, reducer);
+	console.log(env.keyFile, env.certFile);
 	const server = env.https ?
 		require("https").createServer({
-			key: `./../constants/${env.keyFile}`,
-			cert: `./../constants/${env.certFile}`
+			key:  fs.readFileSync(`${__dirname}/../constants/${env.keyFile}`),
+			cert: fs.readFileSync(`${__dirname}/../constants/${env.certFile}`)
 		}, express) :
 		require("http").createServer(express);
 	server.listen(env.port);
