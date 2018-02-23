@@ -7,7 +7,6 @@ let Then = require('../then'),
 		Err = require('../err');
 module.exports = (env, reducer) => {
 	Then = Then.bind(this, reducer);
-	console.log(env.keyFile, env.certFile);
 	const server = env.https ?
 		require("https").createServer({
 			key:  fs.readFileSync(`${__dirname}/../constants/${env.keyFile}`),
