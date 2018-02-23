@@ -31,7 +31,7 @@ BEGIN
 								"message", message
 							)
 						));
-						ELSE SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messages));
+						ELSE SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messages, 0));
 					END IF;
 					SET responce = JSON_MERGE(responce, dispatchDialog(organizationID, dialogID));
 					SET responce = JSON_MERGE(responce, JSON_OBJECT(
