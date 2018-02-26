@@ -1,99 +1,109 @@
-module.exports = function(telegram, apiai, reducer, actions, io, subject, notification){
-	telegram.on("message", function(message){
-		var connection = telegram.connections.find(function(connection){
-			return connection.hash == message.chat.id;
-		});
-		if(!connection){
-			connection = telegram.connections[telegram.connections.push({hash: subject + message.chat.id, bot: true, error: false}) - 1];
-			reducer(actions.SET_SESSION({
-				hash: subject + message.chat.id, type:"telegram", 
-				subject: subject, 
-				organization_id: "1"
-			}), function(){
-				reducer(actions.GET_SESSION_ID(subject + message.chat.id), function(response){
-					connection.session_id = response[0].session_id;
-					reducer(actions.SET_CLIENT({
-						client_name: message.from.first_name + " " + message.from.last_name,
-						client_username: message.from.username,
-						session_id: connection.session_id,
-						organization_id: "1"
-					}), function(responce){
-						io.broadcastGetClients("1");
-						io.broadcastGetSessions("1");
-						io.broadcastGetSessionInfo(connection.session_id);
-					});
-				});
-			});
-		}
-		if(!connection.active){
-			reducer(actions.SET_ACTIVE({session_hash: subject + message.chat.id}), function(){
-				io.broadcastGetSessions("1");
-				io.broadcastGetSessionInfo(connection.session_id);
-				message.active = true;
-			});
-		}
-		if(connection.timeout_id){
-			clearTimeout(connection.timeout_id);
-		}
-		connection.timeout_id = setTimeout(function(){
-			reducer(actions.SET_INACTIVE({session_hash: subject + message.chat.id}), function(){
-				io.broadcastGetSessions("1");
-				io.broadcastGetSessionInfo(connection.session_id);
-				message.active = false;
-			});
-		}, 600000);
-		reducer(actions.SET_QUESTION({
-			message: message.text,
-			hash: subject + message.chat.id
-		}));
-		io.broadcastGetSessionsDialog({session_hash: subject + message.chat.id});
-		io.broadcastGetSessions("1");
-		var request = apiai.textRequest(message.text, {sessionId: subject + message.chat.id});
-		request.on('response', function(response){
-			reducer(actions.GET_BOT_STATUS({session_hash: subject + message.chat.id}), function(data){
-				data = data[0];
-				if(data.bot_work){
-					reducer(actions.SET_ANSWER({hash: subject + message.chat.id, message: response.result.fulfillment.speech}));
-					reducer(actions.GET_SESSION_INFO(connection.session_id), function(session){
-						session = session[0] || {};
-						if(session.session_error && response.result.action != 'input.unknown'){
-							reducer(actions.REMOVE_ERROR_SESSION(session.session_hash), function(){
-								io.broadcastGetSessions("1");
-								io.broadcastGetSessionInfo(session.session_id);
-							});
-						} else if(!session.session_error && response.result.action == 'input.unknown'){
-							reducer(actions.SET_ERROR_SESSION(session.session_hash), function(){
-								io.broadcastGetSessions("1");
-								io.broadcastGetSessionInfo(session.session_id);
-								reducer(actions.GET_NOTIFICATIONS_USERS(session.organization_id), function(responce){
-									if(responce && responce.length > 0){
-										for(var i = 0; i < responce.length; i++){
-											reducer(actions.GET_CLIENT_ID(session.session_id), (function(number, client_id){
-												notification.sendMessage(responce[number].user_notification_chat, "Бот не смог подобрать ответ в сессии " + session.session_id + "; \nСсылка на диалог: https://astralbot.ru/#/app/dialog:" + session.session_id + "\nСсылка на клиента: https://astralbot.ru/#/app/client:" + client_id[0].client_id + "\nСообщение: \""+message.text+"\"");
-											}).bind(this, i));
-											io.broadcastNotification(session.organization_id, {
-												title: "Сессия " + session.session_id,
-												body: "Бот не смог подобрать ответ",
-												session_id: session.session_id,
-												requireInteraction: true
-											});
-										}
-									}
-								});
-							});
-						}
-					});
-					if(response.result.fulfillment.speech){
-						telegram.sendMessage(message.chat.id, response.result.fulfillment.speech);
+const telegram = require('node-telegram-bot-api');
+let Then = require('../then/'),
+		Err = require('../err/');
+class Telegram {
+	constructor(env, reducer){
+		this.reducer = reducer;
+		this.notificationBot = new telegram(env.token, {polling: true});
+		this.notificationBot.on("message", (data) => {
+			if(data.text && data.text.length == 32){
+				this.reducer.dispatch({
+					type: "Query",
+					data: {
+						query: "loginTelegram",
+						values: [
+							data.text,
+							data.chat.id,
+							data.from.username
+						]
 					}
-					io.broadcastGetSessionsDialog({session_hash: subject + message.chat.id});
-					io.broadcastGetSessionInfo(connection.session_id);
-					io.broadcastGetSessions("1");
+				}).then(Then).catch(Err);
+			} else {
+				if(data.text){
+					switch(data.text){
+						case "/bindme":
+							this.reducer.dispatch({
+								type: "Query",
+								data: {
+									query: "userTelegramState",
+									values: [
+										data.chat.id,
+										1
+									]
+								}
+							}).then(Then).catch(Err);
+						break;
+						case "/unbindme":
+							this.reducer.dispatch({
+								type: "Query",
+								data: {
+									query: "userTelegramState",
+									values: [
+										data.chat.id,
+										0
+									]
+								}
+							}).then(Then).catch(Err);
+						break;
+						case "/start":
+							this.notificationBot.sendMessage(data.chat.id, "Здравствуйте! Для того чтобы авторизовать ваш телеграм в системе astralbot необходимо отправить в этот чат ключ авторизации. Он находиться в разделе 'профиль' - https://astralbot.ru/#/app/profile").
+						break;
+						default:
+							this.notificationBot.sendMessage(data.chat.id, "Извините, такой команды не существует.");
+						break;
+					}
 				}
-			});
+			}
 		});
-		setTimeout(function(){
-			request.end();
-		}, 7000);
-	});
+		this.usersBots = {};
+	}
+	connectBots(bots){
+		for (let i = 0; i < bots.length; i++) {
+			let bot = bots[i];
+			let botTelegram = new telegram(bot.bot_telegram_key, {polling: true});
+			botTelegram.on("message", (data) => {
+				this.reducer.dispatch({
+					type: "Query",
+					data: {
+						query: "clientMessageTelegram",
+						values: [
+							data.chat.id,
+							bot.bot_id,
+							data.text,
+							`${data.from.first_name} ${data.from.last_name}`,
+							data.from.username
+						]
+					}
+				}).then(Then).catch(Err);
+			});
+			this.usersBots[bot.bot_id] = botTelegram;
+		}
+	}
+	sendMessage(bot_id, chats, message){
+		if (this.usersBots[bot_id] && chats && message) {
+			let bot = this.usersBots[bot_id];
+			for(let i = 0; i < chats.length; i++){
+				let chat = chats[i];
+				bot.sendMessage(chat, message);
+			}
+		}
+	}
+	deleteBots(bots){
+		for (let i = 0; i < bots.length; i++) {
+			let bot_id = bots[i];
+			if (this.usersBots[bot_id]) {
+				this.usersBots[bot_id].stopPolling({cancel: true});
+			}
+		}
+	}
+	sendNotifications(chats, message){
+		for(let i = 0; i < chats.length; i++){
+			let chat = chats[i];
+			this.notificationBot.sendMessage(chat, message);
+		}
+	}
+}
+module.exports = (env, reducer) => {
+	Then = Then.bind(this, reducer);
+	return new Telegram(env, reducer);
 }

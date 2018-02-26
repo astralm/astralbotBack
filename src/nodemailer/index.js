@@ -1,11 +1,12 @@
-module.exports = function(nodemailer, env){
-	var transporter = nodemailer.createTransport({
-		host: env.nodemailer.host,
-		port: env.nodemailer.port,
-		secure: env.nodemailer.secure,
+const nodemailer = require('nodemailer');
+module.exports = env => {
+	let transporter = nodemailer.createTransport({
+		host: env.host,
+		port: env.port,
+		secure: env.secure,
 		auth: {
-			user: env.nodemailer.user,
-			pass: env.nodemailer.pass
+			user: env.user,
+			pass: env.pass
 		}
 	});
 	return transporter;

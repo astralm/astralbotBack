@@ -1,5 +1,6 @@
 node_modules/
 build/
+*/**/env.json
 */**/env.js
 */**/*.pem
 npm-debug.log
