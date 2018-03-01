@@ -40,6 +40,7 @@ BEGIN
 Сообщение: 
 ", messageText);
 					SET responce = JSON_MERGE(responce, sendNotification(organizationID, notificationText));
+					SET responce = JSON_MERGE(responce, sendPush(organizationID, 9, dialogID, CONCAT("Бот не смог подобрать ответ в сессии ", dialogID), 1, CONCAT("Ошибка в диалоге ", dialogID), 1));
 				END;
 				ELSE BEGIN
 					SELECT answer_text INTO answerText FROM answers WHERE answer_id = answerID;

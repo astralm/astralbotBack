@@ -2258,6 +2258,38 @@ BEGIN
   RETURN responce;
 END$$
 
+CREATE DEFINER=`root`@`localhost` FUNCTION `changeTelegramState` (`userHash` VARCHAR(32) CHARSET utf8, `socketHash` VARCHAR(32) CHARSET utf8, `state` TINYINT(1)) RETURNS JSON NO SQL
+BEGIN
+  DECLARE validOperation TINYINT(1) DEFAULT validStandartOperation(userHash, socketHash);
+  DECLARE userID, organizationID INT(11);
+  DECLARE responce JSON;
+  SET responce = JSON_ARRAY();
+  IF validOperation
+    THEN BEGIN
+      SELECT user_id, organization_id INTO userID, organizationID FROM users WHERE user_hash = userHash;
+      UPDATE users SET user_telegram_notification = state WHERE user_id = userID;
+      SET responce = dispatchProfile(organizationID, userID);
+    END;
+  END IF;
+  RETURN responce;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `changeWebState` (`userHash` VARCHAR(32) CHARSET utf8, `socketHash` VARCHAR(32) CHARSET utf8, `state` TINYINT(1)) RETURNS JSON NO SQL
+BEGIN
+  DECLARE validOperation TINYINT(1) DEFAULT validStandartOperation(userHash, socketHash);
+  DECLARE userID, organizationID INT(11);
+  DECLARE responce JSON;
+  SET responce = JSON_ARRAY();
+  IF validOperation
+    THEN BEGIN
+      SELECT user_id, organization_id INTO userID, organizationID FROM users WHERE user_hash = userHash;
+      UPDATE users SET user_web_notifications = state WHERE user_id = userID;
+      SET responce = dispatchProfile(organizationID, userID);
+    END;
+  END IF;
+  RETURN responce;
+END$$
+
 CREATE DEFINER=`root`@`localhost` FUNCTION `checkTelegramDialog` (`dialogID` INT(11)) RETURNS JSON NO SQL
 BEGIN
   DECLARE compare TINYINT(1);
@@ -2342,6 +2374,7 @@ BEGIN
 Сообщение: 
 ", messageText);
                     SET responce = JSON_MERGE(responce, sendNotification(organizationID, notificationText));
+                    SET responce = JSON_MERGE(responce, sendPush(organizationID, 9, dialogID, CONCAT("Бот не смог подобрать ответ в сессии ", dialogID), 1, CONCAT("Ошибка в диалоге ", dialogID), 1));
                 END;
                 ELSE BEGIN
                     SELECT answer_text INTO answerText FROM answers WHERE answer_id = answerID;
@@ -2409,6 +2442,7 @@ BEGIN
 Сообщение: 
 ", messageText);
           SET responce = JSON_MERGE(responce, sendNotification(organizationID, notificationText));
+          SET responce = JSON_MERGE(responce, sendPush(organizationID, 9, dialogID, CONCAT("Бот не смог подобрать ответ в сессии ", dialogID), 1, CONCAT("Ошибка в диалоге ", dialogID), 1));
         END;
         ELSE BEGIN
           SELECT answer_text INTO answerText FROM answers WHERE answer_id = answerID;
@@ -2939,6 +2973,44 @@ BEGIN
               "action", "mergeDeep",
               "data", JSON_OBJECT(
                 "viewOrganization", organization
+              )
+            )
+          )
+        )
+      ));
+      ITERATE socketsLoop;
+    END LOOP;
+  CLOSE socketsCursor;
+  RETURN responce;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `dispatchProfile` (`organizationID` INT(11), `userID` INT(11)) RETURNS JSON NO SQL
+BEGIN
+  DECLARE socketID INT(11);
+  DECLARE done TINYINT(1);
+  DECLARE connectionID VARCHAR(128);
+  DECLARE responce, profile JSON;
+  DECLARE socketsCursor CURSOR FOR SELECT socket_id FROM sockets_states WHERE organization_id = organizationID AND socket_connection = 1 AND state_json ->> "$.page" = 13 AND state_json ->> "$.user.id" = userID;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+  SET responce = JSON_ARRAY();
+  SELECT profile_json INTO profile FROM profile_json WHERE user_id = userID;
+  OPEN socketsCursor;
+    socketsLoop: LOOP
+      FETCH socketsCursor INTO socketID;
+      IF done 
+        THEN LEAVE socketsLoop;
+      END IF;
+      SELECT socket_connection_id INTO connectionID FROM sockets WHERE socket_id = socketID;
+      UPDATE states SET state_json = JSON_SET(state_json, "$.user", profile) WHERE socket_id = socketID;
+      SET responce = JSON_MERGE(responce, JSON_OBJECT(
+        "action", "sendToSocket",
+        "data", JSON_OBJECT(
+          "socket", connectionID,
+          "data", JSON_ARRAY(
+            JSON_OBJECT(
+              "action", "mergeDeep",
+              "data", JSON_OBJECT(
+                "user", profile
               )
             )
           )
@@ -4441,6 +4513,45 @@ BEGIN
       )
     ));
   END IF;
+  RETURN responce;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `sendPush` (`organizationID` INT(11), `pageID` INT(11), `itemID` INT(11), `body` TEXT CHARSET utf8, `requireInteraction` TINYINT(1), `title` TEXT CHARSET utf8, `onclick` TINYINT(1)) RETURNS JSON NO SQL
+BEGIN
+  DECLARE done TINYINT(1);
+  DECLARE connectionID VARCHAR(128);
+  DECLARE responce JSON;
+  DECLARE socketsCursor CURSOR FOR SELECT socket_connection_id FROM web_push_sockets WHERE organization_id = organizationID;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+  SET responce = JSON_ARRAY();
+  OPEN socketsCursor;
+    socketsLoop: LOOP
+      FETCH socketsCursor INTO connectionID;
+      IF done 
+        THEN LEAVE socketsLoop;
+      END IF;
+      SET responce = JSON_MERGE(responce, JSON_OBJECT(
+        "action", "sendToSocket",
+        "data", JSON_OBJECT(
+          "socket", connectionID,
+          "data", JSON_ARRAY(
+            JSON_OBJECT(
+              "action", "notification",
+              "data", JSON_OBJECT(
+                "page_id", pageID,
+                "item_id", itemID,
+                "body", body,
+                "requireInteraction", requireInteraction,
+                "title", title,
+                "onclick", onclick
+              )
+            )
+          )
+        )
+      ));
+      ITERATE socketsLoop;
+    END LOOP;
+  CLOSE socketsCursor;
   RETURN responce;
 END$$
 
@@ -6310,7 +6421,7 @@ BEGIN
                 "message", message
               )
             ));
-            ELSE SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messages));
+            ELSE SET responce = JSON_MERGE(responce, dispatchClient(clientID, "loadDialog", messages, 0));
           END IF;
           SET responce = JSON_MERGE(responce, dispatchDialog(organizationID, dialogID));
           SET responce = JSON_MERGE(responce, JSON_OBJECT(
@@ -7517,6 +7628,12 @@ CREATE TABLE `user_state_information` (
 ,`organization_name` varchar(256)
 ,`user_creator_name` varchar(64)
 );
+CREATE TABLE `web_push_sockets` (
+`socket_connection_id` varchar(128)
+,`organization_id` int(11)
+,`user_id` int(11)
+,`socket_id` int(11)
+);
 DROP TABLE IF EXISTS `bots_json`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `bots_json`  AS  select json_object('bot_id',`bots`.`bot_id`,'bot_telegram_key',`bots`.`bot_telegram_key`) AS `bot_json` from `bots` where (`bots`.`bot_telegram_key` is not null) ;
@@ -7600,7 +7717,7 @@ DROP TABLE IF EXISTS `organization_json`;
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `organization_json`  AS  select json_object('organization_id',`organizations`.`organization_id`,'organization_name',`organizations`.`organization_name`) AS `organization_json` from `organizations` ;
 DROP TABLE IF EXISTS `profile_json`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `profile_json`  AS  select json_object('name',`u`.`user_name`,'email',`u`.`user_email`,'telegram_notification',`u`.`user_telegram_notification`) AS `profile_json`,json_object('organization_site',`o`.`organization_site`,'organization_name',`o`.`organization_name`,'organization_id',`o`.`organization_id`) AS `organization_json`,`u`.`user_id` AS `user_id` from (`users` `u` left join `organizations` `o` on((`o`.`organization_id` = `u`.`organization_id`))) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `profile_json`  AS  select json_object('name',`u`.`user_name`,'email',`u`.`user_email`,'telegram_notification',`u`.`user_telegram_notification`,'web_notification',`u`.`user_web_notifications`,'id',`u`.`user_id`) AS `profile_json`,json_object('organization_site',`o`.`organization_site`,'organization_name',`o`.`organization_name`,'organization_id',`o`.`organization_id`) AS `organization_json`,`u`.`user_id` AS `user_id` from (`users` `u` left join `organizations` `o` on((`o`.`organization_id` = `u`.`organization_id`))) ;
 DROP TABLE IF EXISTS `sockets_states`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `sockets_states`  AS  select `st`.`state_json` AS `state_json`,`s`.`socket_id` AS `socket_id`,`s`.`organization_id` AS `organization_id`,`s`.`socket_connection` AS `socket_connection` from (`sockets` `s` join `states` `st` on((`st`.`socket_id` = `s`.`socket_id`))) ;
@@ -7613,6 +7730,9 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 DROP TABLE IF EXISTS `user_state_information`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `user_state_information`  AS  select `u`.`user_name` AS `user_name`,`u`.`user_email` AS `user_email`,`u`.`user_date_create` AS `user_date_create`,`u`.`user_date_update` AS `user_date_update`,`u`.`user_creator` AS `user_creator_id`,`u`.`user_telegram_username` AS `user_telegram_username`,`u`.`user_telegram_notification` AS `user_telegram_notification`,`u`.`user_web_notifications` AS `user_web_notifications`,`u`.`user_online` AS `user_online`,`u`.`user_sockets_count` AS `user_sockets_count`,`u`.`user_sockets_online_count` AS `user_sockets_online_count`,`o`.`organization_id` AS `organization_id`,`o`.`organization_name` AS `organization_name`,`u2`.`user_name` AS `user_creator_name` from ((`users` `u` left join `organizations` `o` on((`u`.`organization_id` = `o`.`organization_id`))) left join `users` `u2` on((`u2`.`user_id` = `u`.`user_creator`))) ;
+DROP TABLE IF EXISTS `web_push_sockets`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `web_push_sockets`  AS  select `usc`.`socket_connection_id` AS `socket_connection_id`,`u`.`organization_id` AS `organization_id`,`u`.`user_id` AS `user_id`,`usc`.`socket_id` AS `socket_id` from (`user_sockets_connection` `usc` join `users` `u` on((`u`.`user_id` = `usc`.`user_id`))) where ((`usc`.`socket_connection` = 1) and (`u`.`user_web_notifications` = 1)) ;
 
 
 ALTER TABLE `answers`
