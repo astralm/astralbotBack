@@ -3,8 +3,9 @@ BEGIN
     DECLARE socketID, userID, organizationID, entitiesID, entitiesIterator, entitiesLength, entityIterator, entityLength, entityID, essenceID INT(11);
     DECLARE connectionID VARCHAR(128);
     DECLARE entityName, essenceValue VARCHAR(1024);
-    DECLARE responce, entityArray JSON;
+    DECLARE responce, entityArray, entitiesEssences JSON;
     SET responce = JSON_ARRAY();
+    SET entitiesEssences = JSON_ARRAY();
     IF validOperation = 1
     	THEN BEGIN
             SELECT user_id, organization_id INTO userID, organizationID FROM users WHERE user_hash = userHash;
@@ -38,10 +39,18 @@ BEGIN
                             SELECT essence_id INTO essenceID FROM essences ORDER BY essence_id DESC LIMIT 1;
                         END;
                     END IF;
-                    INSERT INTO entity_essences (entity_id, essence_id, user_id) VALUES (entityID, essenceID, userID);
+                    IF !JSON_CONTAINS(entitiesEssences, JSON_ARRAY(essenceID))
+                        THEN BEGIN
+                            SET entitiesEssences = JSON_MERGE(entitiesEssences, CONCAT("",essenceID));
+                            INSERT INTO entity_essences (entity_id, essence_id, user_id) VALUES (entityID, essenceID, userID);
+                        END;
+                    END IF;
                     SET entityIterator = entityIterator + 1;
                     ITERATE entityLoop;
                 END LOOP;
+                IF (SELECT COUNT(*) FROM entity_essences WHERE entity_id = entityID) = 0
+                    THEN DELETE FROM entity WHERE entity_id = entityID;
+                END IF;
                 SET entitiesIterator = entitiesIterator + 1;
                 ITERATE entitiesLoop;
             END LOOP;
