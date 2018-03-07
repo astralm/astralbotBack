@@ -1,16 +1,11 @@
 BEGIN
     DECLARE messageText, entitiesString, messageSegment, cutResultLeft, searchResult, cutResultRight, essenceString, segmentDuplicate TEXT;
-    DECLARE answerID, entitiesID, essenceID, stringLength, organizationID, dialogID, botID, shift, segmentLength, essenceEnd, essenceStart, iterator, iterator2, segmentEssencesLength, searchResultLength, searchEndPoint, essenceInArray, mainEssenceInArray, essenceLength, flagStart, cutLength, startLocate, iterator3 INT(11);
+    DECLARE answerID, entitiesID, essenceID, stringLength, organizationID, dialogID, botID, shift, segmentLength, essenceEnd, essenceStart, iterator, iterator2, segmentEssencesLength, searchResultLength, searchEndPoint, essenceInArray, mainEssenceInArray, essenceLength, flagStart, cutLength, startLocate, essencesLength, minStart INT(11);
     DECLARE messageArray, essencesPositionArray, segmentEssencesArray, searchResultArray, saveEssences, essence, segmentEssenceArray, cutWeights JSON;
-    SET entitiesString = "";
     SET answerID = 0;
-    SET iterator3 = 0;
     SET saveEssences = JSON_ARRAY();
-    SET botID = 1;
-    SET messageText = "здравствуйhjbjpздравствуйjhbjhbjздравствуйте";
-    SET iterator2 = 0;
-    -- SELECT LOWER(message_text), dialog_id INTO messageText, dialogID FROM messages WHERE message_id = messageID;
-    -- SELECT organization_id, bot_id INTO organizationID, botID FROM dialogues WHERE dialog_id = dialogID; 
+    SELECT LOWER(message_text), dialog_id INTO messageText, dialogID FROM messages WHERE message_id = messageID;
+    SELECT organization_id, bot_id INTO organizationID, botID FROM dialogues WHERE dialog_id = dialogID; 
     SET stringLength = CHAR_LENGTH(messageText);
     IF stringLength > 0
         THEN BEGIN
@@ -136,16 +131,67 @@ BEGIN
                     SET iterator = iterator + 1;
                     ITERATE uploadLoop;
                 END LOOP;
-                /*SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID AND bot_id = botID;
-                IF entitiesID IS NOT NULL
-                    THEN BEGIN 
-                        SET entitiesString = CONCAT(entitiesString, ",", entitiesID);
-                    END;
-                END IF;*/
-                SET iterator3 = iterator3 + 1;
                 ITERATE searchLoop;
             END LOOP;
         END;
     END IF;
-    RETURN essencesPositionArray;
+    SET essencesLength = JSON_LENGTH(essencesPositionArray);
+    IF essencesLength > 0 AND essencesLength > 1
+        THEN BEGIN
+            essencesBustLoop: LOOP
+                IF essencesLength <= 0
+                    THEN LEAVE essencesBustLoop;
+                END IF;
+                SET iterator = 0;
+                findMinEssenceLoop: LOOP
+                    IF iterator >= essencesLength
+                        THEN LEAVE findMinEssenceLoop;
+                    END IF;
+                    SET essence = JSON_EXTRACT(essencesPositionArray, CONCAT("$[", iterator, "]"));
+                    SET essenceStart = JSON_UNQUOTE(JSON_EXTRACT(essence, "$[1][0]"));
+                    SET essenceInArray = iterator;
+                    IF iterator = 0
+                        THEN BEGIN 
+                            SET minStart = essenceStart;
+                            SET mainEssenceInArray = essenceInArray;
+                        END;
+                        ELSE BEGIN
+                            IF essenceStart < minStart
+                                THEN BEGIN
+                                    SET minStart = essenceStart;
+                                    SET mainEssenceInArray = essenceInArray;
+                                END;
+                            END IF;
+                        END;
+                    END IF;
+                    SET iterator = iterator + 1;
+                    ITERATE findMinEssenceLoop;
+                END LOOP;
+                SET saveEssences = JSON_MERGE(saveEssences, JSON_EXTRACT(essencesPositionArray, CONCAT("$[", mainEssenceInArray, "][0]")));
+                SET essencesPositionArray = JSON_REMOVE(essencesPositionArray, CONCAT("$[", mainEssenceInArray, "]"));
+                SET essencesLength = essencesLength - 1;
+                ITERATE essencesBustLoop;
+            END LOOP;
+        END;
+        ELSE SET saveEssences = JSON_ARRAY(JSON_EXTRACT(essencesPositionArray, "$[0][0]"));
+    END IF;
+    SET essencesLength = JSON_LENGTH(saveEssences);
+    IF essencesLength > 0
+        THEN BEGIN
+            SET iterator = 0;
+            findEntitiesLoop: LOOP
+                IF iterator >= essencesLength
+                    THEN LEAVE findEntitiesLoop;
+                END IF;
+                SET essenceID = JSON_EXTRACT(saveEssences, CONCAT("$[", iterator, "]"));
+                SELECT entities_id INTO entitiesID FROM entities_essences WHERE essence_id = essenceID AND bot_id = botID;
+                SET saveEssences = JSON_SET(saveEssences, CONCAT("$[", iterator, "]"), entitiesID);
+                SET iterator = iterator + 1;
+                ITERATE findEntitiesLoop;
+            END LOOP;
+            SET entitiesString = REPLACE(REPLACE(REPLACE(saveEssences, "[", ""), "]", ""), " ", "");
+            SELECT answer_id INTO answerID FROM conditions_answers WHERE organization_id = organizationID AND bot_id = botID AND condition_entities = entitiesString;
+        END;
+    END IF;
+    RETURN answerID;
 END
