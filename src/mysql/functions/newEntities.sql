@@ -28,7 +28,7 @@ BEGIN
                     IF entityIterator >= entityLength
                         THEN LEAVE entityLoop;
                     END IF;
-                    SET essenceValue = JSON_UNQUOTE(JSON_EXTRACT(entityArray, CONCAT("$[", entityIterator, "]")));
+                    SET essenceValue = LOWER(JSON_UNQUOTE(JSON_EXTRACT(entityArray, CONCAT("$[", entityIterator, "]"))));
                     SET essenceID = (SELECT (SELECT essence_id FROM essences WHERE essence_value = essenceValue) OR NULL);
                     IF essenceID 
                         THEN SELECT essence_id INTO essenceID FROM essences WHERE essence_value = essenceValue;
