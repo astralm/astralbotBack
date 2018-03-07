@@ -1,6 +1,6 @@
 BEGIN
     DECLARE messageText, entitiesString, messageSegment, cutResultLeft, searchResult, cutResultRight, essenceString, segmentDuplicate TEXT;
-    DECLARE answerID, entitiesID, essenceID, stringLength, organizationID, dialogID, botID, shift, segmentLength, essenceEnd, essenceStart, iterator, iterator2, segmentEssencesLength, searchResultLength, searchEndPoint, essenceInArray, mainEssenceInArray, essenceLength, flagStart, cutLength, startLocate, essencesLength, minStart INT(11);
+    DECLARE answerID, entitiesID, essenceID, stringLength, organizationID, dialogID, botID, shift, segmentLength, essenceEnd, essenceStart, iterator, iterator2, segmentEssencesLength, searchResultLength, searchEndPoint, essenceInArray, mainEssenceInArray, essenceLength, flagStart, cutLength, startLocate, essencesLength, minStart, searchStartPoint INT(11);
     DECLARE messageArray, essencesPositionArray, segmentEssencesArray, searchResultArray, saveEssences, essence, segmentEssenceArray, cutWeights JSON;
     SET answerID = 0;
     SET saveEssences = JSON_ARRAY();
@@ -24,56 +24,45 @@ BEGIN
                     THEN BEGIN
                         SET iterator = 0;
                         cutLoop: LOOP
-                            IF iterator >= JSON_LENGTH(segmentEssencesArray)
+                            IF iterator >= segmentEssencesLength
                                 THEN BEGIN 
                                     LEAVE cutLoop;
                                 END;
                             END IF;
                             SET segmentEssenceArray = JSON_EXTRACT(segmentEssencesArray, CONCAT("$[", iterator, "]"));
                             SET essenceStart = JSON_EXTRACT(segmentEssenceArray, "$[1][0]");
-                            SET searchResult = JSON_SEARCH(segmentEssencesArray, "all", essenceStart, NULL, "$[*][1][0]");
-                            SET searchResultArray = REPLACE(REPLACE(REPLACE(REPLACE(searchResult, "$", ""), "\"[", "[" ), "]\"", "]"), "][", ",");
+                            SET essenceEnd = JSON_EXTRACT(segmentEssenceArray, "$[1][1]");
+                            SET searchResultArray = JSON_ARRAY();
+                            SET iterator2 = 0;
+                            searchInternalLoop: LOOP
+                                IF iterator2 >= segmentEssencesLength
+                                    THEN LEAVE searchInternalLoop;
+                                END IF;
+                                SET essence = JSON_EXTRACT(segmentEssencesArray, CONCAT("$[", iterator2, "]"));
+                                SET searchStartPoint = JSON_EXTRACT(essence, "$[1][0]");
+                                SET searchEndPoint = JSON_EXTRACT(essence, "$[1][1]");
+                                IF iterator != iterator2 AND searchStartPoint >= essenceStart AND searchEndPoint <= essenceEnd
+                                    THEN SET searchResultArray = JSON_MERGE(searchResultArray, CONCAT(iterator2));
+                                END IF;
+                                SET iterator2 = iterator2 + 1;
+                                ITERATE searchInternalLoop;
+                            END LOOP;
                             SET searchResultLength = JSON_LENGTH(searchResultArray);
-                            IF JSON_TYPE(searchResult) = "ARRAY"
+                            IF searchResultLength > 0
                                 THEN BEGIN
                                     SET iterator2 = 0;
-                                    comparisonLoop: LOOP
-                                        IF iterator2 >= searchResultLength
-                                            THEN LEAVE comparisonLoop;
-                                        END IF;
-                                        SET searchResult = JSON_EXTRACT(searchResultArray, CONCAT("$[", iterator2, "]"));
-                                        SET essenceInArray = JSON_EXTRACT(searchResult, "$[0]");
-                                        SET essence = JSON_EXTRACT(segmentEssencesArray, CONCAT("$[", essenceInArray, "]"));
-                                        SET searchEndPoint = JSON_EXTRACT(essence, "$[1][1]");
-                                        IF essenceEnd IS NULL
-                                            THEN BEGIN 
-                                                SET essenceEnd = searchEndPoint;
-                                                SET mainEssenceInArray = essenceInArray;
-                                            END;
-                                        END IF;
-                                        IF searchEndPoint > essenceEnd
-                                            THEN BEGIN
-                                                SET mainEssenceInArray = essenceInArray;
-                                                SET essenceEnd = searchEndPoint;
-                                            END;
-                                        END IF;
-                                        SET iterator2 = iterator2 + 1;
-                                        ITERATE comparisonLoop;
-                                    END LOOP;
-                                    SET searchResultArray = JSON_REMOVE(searchResultArray, CONCAT("$[", mainEssenceInArray, "]"));
-                                    SET iterator2 = 0;
-                                    SET searchResultLength = searchResultLength - 1;
                                     deleteEssencesLoop: LOOP
                                         IF iterator2 >= searchResultLength
                                             THEN LEAVE deleteEssencesLoop;
                                         END IF;
-                                        SET essenceInArray = JSON_EXTRACT(searchResultArray, CONCAT("$[", iterator2, "][0]"));
-                                        SET segmentEssencesArray = JSON_REMOVE(segmentEssencesArray, CONCAT("$[", essenceInArray, "]"));
+                                        SET searchResult = JSON_EXTRACT(searchResultArray, CONCAT("$[", iterator2, "]"));
+                                        SET segmentEssencesArray = JSON_REMOVE(segmentEssencesArray, CONCAT("$[", searchResult - iterator2, "]"));
                                         SET iterator2 = iterator2 + 1;
                                         ITERATE deleteEssencesLoop;
                                     END LOOP;
                                 END;
                             END IF;
+                            SET segmentEssencesLength = JSON_LENGTH(segmentEssencesArray);
                             SET iterator = iterator + 1;
                             ITERATE cutLoop;
                         END LOOP;
